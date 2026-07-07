@@ -11,6 +11,8 @@ import {
   FileDown,
   Stethoscope,
   CalendarRange,
+  Sparkles,
+  Loader2,
 } from 'lucide-react'
 import { Section } from '@/components/ui-kit'
 import { formatRangeLabel, generateTalkingPoints, type Profile, type DailyRecord } from '@/lib/health'
@@ -127,6 +129,11 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   const [fromDate, setFromDate] = useState(isoDaysAgo(14))
   const [toDate, setToDate] = useState(isoDaysAgo(0))
   const [copied, setCopied] = useState(false)
+  const [supportTab, setSupportTab] = useState<'simple' | 'ai'>('simple')
+  const [aiPoints, setAiPoints] = useState<string[] | null>(null)
+  const [aiRequestKey, setAiRequestKey] = useState<string | null>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
 
   const rangeLabel = range === '期間を指定' ? formatRange(fromDate, toDate) : range
 
@@ -159,6 +166,48 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   const chartData = filtered.map((r) => ({ label: formatRangeLabel(r.date), mood: r.mood }))
 
   const talkingPoints = useMemo(() => generateTalkingPoints(filtered), [filtered])
+
+  const aiRequestSignature = useMemo(
+    () =>
+      JSON.stringify(
+        filtered.map((r) => [
+          r.date,
+          r.mood,
+          r.symptoms,
+          r.sleepHours,
+          r.sleepOnset,
+          r.nightWaking,
+          r.appetite,
+          r.exercise,
+          r.memo,
+        ]),
+      ),
+    [filtered],
+  )
+
+  const isAiStale = aiRequestKey !== aiRequestSignature
+
+  const handleGenerateAiSummary = async () => {
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const res = await fetch('/api/talking-points', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ records: filtered, rangeLabel }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) {
+        throw new Error(data?.error ?? 'AI要約の生成に失敗しました。')
+      }
+      setAiPoints(data.points as string[])
+      setAiRequestKey(aiRequestSignature)
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'AI要約の生成に失敗しました。')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const symptomCounts = useMemo(() => {
     const counts = new Map<string, number>()
@@ -306,14 +355,81 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
             この期間の記録がまだないため、ポイントをまとめられません。まずは体調記録をつけてみましょう。
           </p>
         ) : (
-          <ul className="flex flex-col gap-3">
-            {talkingPoints.map((t, i) => (
-              <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/85">
-                <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                {t}
-              </li>
-            ))}
-          </ul>
+          <>
+            <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">
+              <button
+                type="button"
+                onClick={() => setSupportTab('simple')}
+                className={cn(
+                  'rounded-xl py-2 text-[13px] font-semibold transition-all',
+                  supportTab === 'simple' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                )}
+              >
+                かんたん要約
+              </button>
+              <button
+                type="button"
+                onClick={() => setSupportTab('ai')}
+                className={cn(
+                  'flex items-center justify-center gap-1 rounded-xl py-2 text-[13px] font-semibold transition-all',
+                  supportTab === 'ai' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                )}
+              >
+                <Sparkles className="size-3.5" />
+                AI要約
+              </button>
+            </div>
+
+            {supportTab === 'simple' && (
+              <ul className="flex flex-col gap-3">
+                {talkingPoints.map((t, i) => (
+                  <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/85">
+                    <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                    {t}
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {supportTab === 'ai' && (
+              <div>
+                <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+                  記録の選択項目とメモをもとに、Gemini（Google AI）がポイントをまとめます。
+                </p>
+
+                {aiPoints && !isAiStale && (
+                  <ul className="mb-3 flex flex-col gap-3">
+                    {aiPoints.map((t, i) => (
+                      <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/85">
+                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
+                        {t}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
+                {aiError && <p className="mb-3 text-sm text-destructive">{aiError}</p>}
+
+                <button
+                  type="button"
+                  onClick={handleGenerateAiSummary}
+                  disabled={aiLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl border border-primary/30 bg-primary/10 py-3 text-sm font-bold text-primary transition-all hover:bg-primary/15 active:scale-[0.99] disabled:opacity-60"
+                >
+                  {aiLoading ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="size-4" />
+                  )}
+                  {aiLoading
+                    ? '生成中…'
+                    : aiPoints && !isAiStale
+                      ? 'この内容で再生成する'
+                      : 'AIで要約する'}
+                </button>
+              </div>
+            )}
+          </>
         )}
       </Section>
 
