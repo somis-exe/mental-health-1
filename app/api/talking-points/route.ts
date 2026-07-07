@@ -26,9 +26,11 @@ function buildPrompt(records: DailyRecord[], rangeLabel?: string): string {
     '',
     lines.join('\n'),
     '',
-    '上記の記録（自由記述のメモも含む）をもとに、診察室で患者が医師に伝えるとよいポイントを、重要な順に最大5個、日本語の短い文で挙げてください。',
+    '上記の記録（自由記述のメモも含む）をもとに、対象期間内の体調の推移が分かるように、日付の古い順（時系列）でポイントをまとめてください。',
+    '同じような状態が続く日はまとめてもよいですが、期間全体の変化の流れが伝わるようにしてください。件数は期間の長さに応じて最大8件程度としてください。',
+    '各ポイントには、そのポイントが対応する記録の日付（複数日をまとめた場合は代表または開始日）をYYYY-MM-DD形式で付けてください。',
     '記録に無い内容は含めないでください。医学的な診断や治療方針の判断は行わないでください。',
-    '出力は次のJSON形式のみを返してください（説明文やコードブロックは不要）: {"points": ["...", "..."]}',
+    '出力は次のJSON形式のみを返してください（説明文やコードブロックは不要）: {"points": [{"date": "YYYY-MM-DD", "text": "..."}]}',
   ]
     .filter((s): s is string => s !== null)
     .join('\n')
@@ -83,24 +85,46 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'AIからの応答が空でした。' }, { status: 502 })
     }
 
-    let points: string[] = []
+    const DATE_RE = /^\d{4}-\d{2}-\d{2}$/
+
+    let points: { date: string | null; text: string }[] = []
     try {
       const parsed = JSON.parse(text)
       points = Array.isArray(parsed?.points)
-        ? parsed.points.filter((p: unknown): p is string => typeof p === 'string' && p.trim().length > 0)
+        ? parsed.points
+            .map((p: unknown) => {
+              if (typeof p === 'string') return { date: null, text: p.trim() }
+              if (p && typeof p === 'object' && typeof (p as { text?: unknown }).text === 'string') {
+                const rawDate = (p as { date?: unknown }).date
+                const date = typeof rawDate === 'string' && DATE_RE.test(rawDate) ? rawDate : null
+                return { date, text: (p as { text: string }).text.trim() }
+              }
+              return null
+            })
+            .filter((p: { date: string | null; text: string } | null): p is { date: string | null; text: string } =>
+              p !== null && p.text.length > 0,
+            )
         : []
     } catch {
       points = text
         .split('\n')
         .map((l) => l.replace(/^[-*・\d.)\s]+/, '').trim())
         .filter(Boolean)
+        .map((t) => ({ date: null, text: t }))
     }
 
     if (points.length === 0) {
       return NextResponse.json({ error: 'AI要約を生成できませんでした。' }, { status: 502 })
     }
 
-    return NextResponse.json({ points: points.slice(0, 5) })
+    points.sort((a, b) => {
+      if (a.date && b.date) return a.date.localeCompare(b.date)
+      if (a.date) return -1
+      if (b.date) return 1
+      return 0
+    })
+
+    return NextResponse.json({ points: points.slice(0, 8) })
   } catch (e) {
     console.error('Gemini request failed', e)
     return NextResponse.json({ error: 'AI要約の生成中にエラーが発生しました。' }, { status: 500 })

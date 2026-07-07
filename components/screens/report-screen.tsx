@@ -44,6 +44,14 @@ function average(nums: number[]): number | null {
   return nums.reduce((s, n) => s + n, 0) / nums.length
 }
 
+type AiPoint = { date: string | null; text: string }
+
+/** "YYYY-MM-DD" -> "M/D" without going through Date parsing (avoids timezone shifts). */
+function formatAiDateLabel(date: string): string {
+  const [, m, d] = date.split('-')
+  return `${Number(m)}/${Number(d)}`
+}
+
 function MoodLineChart({ data }: { data: { label: string; mood: number }[] }) {
   const w = 320
   const h = 140
@@ -130,7 +138,7 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   const [toDate, setToDate] = useState(isoDaysAgo(0))
   const [copied, setCopied] = useState(false)
   const [supportTab, setSupportTab] = useState<'simple' | 'ai'>('simple')
-  const [aiPoints, setAiPoints] = useState<string[] | null>(null)
+  const [aiPoints, setAiPoints] = useState<AiPoint[] | null>(null)
   const [aiRequestKey, setAiRequestKey] = useState<string | null>(null)
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
@@ -200,7 +208,7 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
       if (!res.ok) {
         throw new Error(data?.error ?? 'AI要約の生成に失敗しました。')
       }
-      setAiPoints(data.points as string[])
+      setAiPoints(data.points as AiPoint[])
       setAiRequestKey(aiRequestSignature)
     } catch (e) {
       setAiError(e instanceof Error ? e.message : 'AI要約の生成に失敗しました。')
@@ -394,18 +402,23 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
             {supportTab === 'ai' && (
               <div>
                 <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
-                  記録の選択項目とメモをもとに、Gemini（Google AI）がポイントをまとめます。
+                  記録の選択項目とメモをもとに、Gemini（Google AI）が対象期間の時系列でポイントをまとめます。
                 </p>
 
                 {aiPoints && !isAiStale && (
-                  <ul className="mb-3 flex flex-col gap-3">
-                    {aiPoints.map((t, i) => (
-                      <li key={i} className="flex gap-2.5 text-sm leading-relaxed text-foreground/85">
-                        <span className="mt-1.5 size-1.5 shrink-0 rounded-full bg-primary" />
-                        {t}
+                  <ol className="mb-3 flex flex-col gap-3 border-l-2 border-primary/20 pl-4">
+                    {aiPoints.map((p, i) => (
+                      <li key={i} className="relative text-sm leading-relaxed text-foreground/85">
+                        <span className="absolute top-1.5 -left-[21px] size-2.5 shrink-0 rounded-full border-2 border-primary bg-card" />
+                        {p.date && (
+                          <span className="mr-1.5 font-semibold text-primary">
+                            {formatAiDateLabel(p.date)}
+                          </span>
+                        )}
+                        {p.text}
                       </li>
                     ))}
-                  </ul>
+                  </ol>
                 )}
 
                 {aiError && <p className="mb-3 text-sm text-destructive">{aiError}</p>}
