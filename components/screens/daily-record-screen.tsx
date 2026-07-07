@@ -29,6 +29,40 @@ import {
 } from '@/lib/health'
 import { cn } from '@/lib/utils'
 
+function MoodPicker({
+  label,
+  value,
+  onChange,
+}: {
+  label: string
+  value: Mood | null
+  onChange: (v: Mood) => void
+}) {
+  return (
+    <div>
+      <p className="mb-2 text-sm font-medium text-muted-foreground">{label}</p>
+      <div className="flex justify-between gap-1">
+        {MOODS.map((m) => (
+          <button
+            key={m.value}
+            type="button"
+            onClick={() => onChange(m.value)}
+            aria-pressed={value === m.value}
+            className={cn(
+              'flex flex-1 flex-col items-center gap-1 rounded-2xl border py-2.5 transition-all active:scale-95',
+              value === m.value
+                ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
+                : 'border-transparent hover:bg-muted',
+            )}
+          >
+            <span className="text-xl leading-none">{m.emoji}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
 function Toggle({
   value,
   onChange,
@@ -62,7 +96,9 @@ export function DailyRecordScreen({
 }) {
   const isEditing = Boolean(initialRecord)
   const dateLabel = useMemo(() => formatFullDate(date), [date])
-  const [mood, setMood] = useState<Mood | null>(initialRecord?.mood ?? null)
+  const [moodMorning, setMoodMorning] = useState<Mood | null>(initialRecord?.moodMorning ?? null)
+  const [moodNoon, setMoodNoon] = useState<Mood | null>(initialRecord?.moodNoon ?? null)
+  const [moodNight, setMoodNight] = useState<Mood | null>(initialRecord?.moodNight ?? null)
   const [symptoms, setSymptoms] = useState<string[]>(initialRecord?.symptoms ?? [])
   const [sleepHours, setSleepHours] = useState(initialRecord?.sleepHours ?? 7)
   const [sleepOnset, setSleepOnset] = useState<string>(initialRecord?.sleepOnset ?? SLEEP_ONSET[1])
@@ -77,20 +113,29 @@ export function DailyRecordScreen({
   const toggleSymptom = (s: string) =>
     setSymptoms((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]))
 
+  const hasMood = moodMorning !== null || moodNoon !== null || moodNight !== null
+  const repMood = useMemo(() => {
+    const vals = [moodMorning, moodNoon, moodNight].filter((v): v is Mood => v !== null)
+    if (vals.length === 0) return null
+    return Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) as Mood
+  }, [moodMorning, moodNoon, moodNight])
+
   const feedback = useMemo(() => {
-    if (!saved || mood === null) return null
-    const tired = mood <= 2 || sleepHours < 5 || symptoms.length >= 3
-    const alert = mood <= 2 && (sleepHours < 5 || symptoms.length >= 3)
+    if (!saved || repMood === null) return null
+    const tired = repMood <= 2 || sleepHours < 5 || symptoms.length >= 3
+    const alert = repMood <= 2 && (sleepHours < 5 || symptoms.length >= 3)
     return { tired, alert }
-  }, [saved, mood, sleepHours, symptoms])
+  }, [saved, repMood, sleepHours, symptoms])
 
   const handleSave = () => {
-    if (mood === null) return
+    if (!hasMood) return
     setSaved(true)
     onSave({
       id: initialRecord?.id,
       date,
-      mood,
+      moodMorning,
+      moodNoon,
+      moodNight,
       symptoms,
       sleepHours,
       sleepOnset,
@@ -129,31 +174,13 @@ export function DailyRecordScreen({
 
       {/* Mood */}
       <Section title="今日の気分" icon={<HeartPulse className="size-4.5 text-primary" />}>
-        <div className="flex justify-between gap-1">
-          {MOODS.map((m) => (
-            <button
-              key={m.value}
-              type="button"
-              onClick={() => setMood(m.value)}
-              aria-pressed={mood === m.value}
-              className={cn(
-                'flex flex-1 flex-col items-center gap-1.5 rounded-2xl border py-3 transition-all active:scale-95',
-                mood === m.value
-                  ? 'border-primary bg-primary/10 ring-1 ring-primary/30'
-                  : 'border-transparent hover:bg-muted',
-              )}
-            >
-              <span className="text-2xl leading-none">{m.emoji}</span>
-              <span
-                className={cn(
-                  'text-[10px] font-medium leading-tight',
-                  mood === m.value ? 'text-primary' : 'text-muted-foreground',
-                )}
-              >
-                {m.label}
-              </span>
-            </button>
-          ))}
+        <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
+          朝・昼・夜のうち、記録できるタイミングだけでかまいません。
+        </p>
+        <div className="flex flex-col gap-4">
+          <MoodPicker label="朝" value={moodMorning} onChange={setMoodMorning} />
+          <MoodPicker label="昼" value={moodNoon} onChange={setMoodNoon} />
+          <MoodPicker label="夜" value={moodNight} onChange={setMoodNight} />
         </div>
       </Section>
 
@@ -251,15 +278,15 @@ export function DailyRecordScreen({
       <button
         type="button"
         onClick={handleSave}
-        disabled={mood === null}
+        disabled={!hasMood}
         className="flex items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
       >
         {saved ? <Check className="size-5" /> : null}
         {saved ? (isEditing ? '更新しました' : '記録しました') : isEditing ? '記録を更新する' : '記録を保存する'}
       </button>
-      {mood === null && (
+      {!hasMood && (
         <p className="-mt-2 text-center text-xs text-muted-foreground">
-          まずは今日の気分を選んでください
+          朝・昼・夜のいずれか1つ以上、気分を選んでください
         </p>
       )}
 

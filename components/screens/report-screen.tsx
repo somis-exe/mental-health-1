@@ -15,7 +15,14 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Section } from '@/components/ui-kit'
-import { formatRangeLabel, generateTalkingPoints, type Profile, type DailyRecord } from '@/lib/health'
+import {
+  dayMoodEntries,
+  formatRangeLabel,
+  generateTalkingPoints,
+  type Profile,
+  type DailyRecord,
+  type MoodSlot,
+} from '@/lib/health'
 import { cn } from '@/lib/utils'
 
 const RANGES = ['過去1週間', '過去1ヶ月', '過去3ヶ月', '期間を指定'] as const
@@ -44,6 +51,8 @@ function average(nums: number[]): number | null {
   return nums.reduce((s, n) => s + n, 0) / nums.length
 }
 
+const SLOT_LABEL: Record<MoodSlot, string> = { morning: '朝', noon: '昼', night: '夜' }
+
 type AiPoint = { date: string | null; text: string }
 
 /** "YYYY-MM-DD" -> "M/D" without going through Date parsing (avoids timezone shifts). */
@@ -64,7 +73,7 @@ function MoodLineChart({ data }: { data: { label: string; mood: number }[] }) {
   const points = data.map((d, i) => ({ x: padX + i * stepX, y: y(d.mood), ...d }))
   const line = points.map((p) => `${p.x},${p.y}`).join(' ')
   const area = `${padX},${padY + innerH} ${line} ${padX + innerW},${padY + innerH}`
-  const showMarkers = data.length <= 14
+  const showMarkers = data.length <= 24
   const labelStep = Math.max(1, Math.ceil(data.length / 6))
 
   return (
@@ -168,10 +177,15 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
       .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
   }, [records, range, fromDate, toDate])
 
-  const avgMood = average(filtered.map((r) => r.mood))
+  const avgMood = average(filtered.flatMap((r) => dayMoodEntries(r).map((e) => e.value)))
   const avgSleep = average(filtered.map((r) => r.sleepHours))
 
-  const chartData = filtered.map((r) => ({ label: formatRangeLabel(r.date), mood: r.mood }))
+  const chartData = filtered.flatMap((r) =>
+    dayMoodEntries(r).map(({ slot, value }) => ({
+      label: `${formatRangeLabel(r.date)}${SLOT_LABEL[slot]}`,
+      mood: value,
+    })),
+  )
 
   const talkingPoints = useMemo(() => generateTalkingPoints(filtered), [filtered])
 
@@ -180,7 +194,9 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
       JSON.stringify(
         filtered.map((r) => [
           r.date,
-          r.mood,
+          r.moodMorning,
+          r.moodNoon,
+          r.moodNight,
           r.symptoms,
           r.sleepHours,
           r.sleepOnset,

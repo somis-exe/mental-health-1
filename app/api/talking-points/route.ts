@@ -5,9 +5,14 @@ const MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash'
 
 function buildPrompt(records: DailyRecord[], rangeLabel?: string): string {
   const lines = records.map((r) => {
+    const moodParts = [
+      r.moodMorning !== null ? `朝${r.moodMorning}/5` : null,
+      r.moodNoon !== null ? `昼${r.moodNoon}/5` : null,
+      r.moodNight !== null ? `夜${r.moodNight}/5` : null,
+    ].filter(Boolean)
     const parts = [
       `日付: ${r.date.slice(0, 10)}`,
-      `気分: ${r.mood}/5`,
+      moodParts.length ? `気分: ${moodParts.join(' ')}` : null,
       `睡眠時間: ${r.sleepHours}時間`,
       `寝つき: ${r.sleepOnset}`,
       r.nightWaking ? '夜間に目が覚めた' : null,
@@ -26,6 +31,7 @@ function buildPrompt(records: DailyRecord[], rangeLabel?: string): string {
     '',
     lines.join('\n'),
     '',
+    '気分は朝・昼・夜の3つの時間帯で記録されている場合があります（未記録の時間帯は省略されています）。1日の中での気分の変化（例: 朝は良いが夜にかけて落ち込む、など）も気づいた点があれば触れてください。',
     '上記の記録（自由記述のメモも含む）をもとに、対象期間内の体調の推移が分かるように、日付の古い順（時系列）でポイントをまとめてください。',
     '同じような状態が続く日はまとめてもよいですが、期間全体の変化の流れが伝わるようにしてください。件数は期間の長さに応じて最大8件程度としてください。',
     '各ポイントには、そのポイントが対応する記録の日付（複数日をまとめた場合は代表または開始日）をYYYY-MM-DD形式で付けてください。',

@@ -1,10 +1,14 @@
 'use client'
 
 import { Plus, Moon, NotebookPen, Pill, Pencil } from 'lucide-react'
-import { formatRecordDate, moodMeta, type DailyRecord } from '@/lib/health'
+import { averageMood, dayMoodEntries, formatRecordDate, moodMeta, type DailyRecord } from '@/lib/health'
+
+const SLOT_LABELS = { morning: '朝', noon: '昼', night: '夜' } as const
 
 function RecordCard({ record, onEdit }: { record: DailyRecord; onEdit: () => void }) {
-  const meta = moodMeta(record.mood)
+  const rep = averageMood(record)
+  const meta = moodMeta(rep ?? 3)
+  const entries = dayMoodEntries(record)
   return (
     <article className="rounded-3xl border border-border bg-card p-4 shadow-sm shadow-black/[0.02]">
       <div className="flex items-center gap-3">
@@ -34,6 +38,16 @@ function RecordCard({ record, onEdit }: { record: DailyRecord; onEdit: () => voi
               </button>
             </span>
           </div>
+          {entries.length > 0 && (
+            <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-medium text-muted-foreground">
+              {entries.map(({ slot, value }) => (
+                <span key={slot} className="flex items-center gap-1">
+                  {SLOT_LABELS[slot]}
+                  <span className="text-sm leading-none">{moodMeta(value).emoji}</span>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
             <span className="flex items-center gap-1">
               <Moon className="size-3.5" />
