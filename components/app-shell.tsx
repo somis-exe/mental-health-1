@@ -38,6 +38,7 @@ export function AppShell({
   const [recordView, setRecordView] = useState<'list' | 'input'>('list')
   const [showDateChoice, setShowDateChoice] = useState(false)
   const [activeDate, setActiveDate] = useState<string | null>(null)
+  const [reportVisited, setReportVisited] = useState(false)
 
   const activeRecord = activeDate
     ? (records.find((r) => dayKey(r.date) === dayKey(activeDate)) ?? null)
@@ -56,6 +57,7 @@ export function AppShell({
 
   const goToTab = (s: Screen) => {
     if (s === 'record') setRecordView('list')
+    if (s === 'report') setReportVisited(true)
     setScreen(s)
   }
 
@@ -101,7 +103,11 @@ export function AppShell({
               onBack={() => setRecordView('list')}
             />
           ))}
-        {screen === 'report' && <ReportScreen profile={profile} records={records} />}
+        {(screen === 'report' || reportVisited) && (
+          <div className={screen === 'report' ? '' : 'hidden'}>
+            <ReportScreen profile={profile} records={records} />
+          </div>
+        )}
         {screen === 'profile' && (
           <ProfileScreen profile={profile} onSave={onUpdateProfile} onLogout={onLogout} />
         )}

@@ -61,24 +61,38 @@ function formatAiDateLabel(date: string): string {
   return `${Number(m)}/${Number(d)}`
 }
 
-function MoodLineChart({ data }: { data: { label: string; mood: number }[] }) {
+function TrendChart({
+  data,
+  min,
+  max,
+  midValue,
+  ariaLabel,
+}: {
+  data: { label: string; value: number }[]
+  min: number
+  max: number
+  midValue?: number
+  ariaLabel: string
+}) {
   const w = 320
   const h = 140
   const padX = 16
   const padY = 18
   const innerW = w - padX * 2
   const innerH = h - padY * 2
+  const range = max - min || 1
   const stepX = data.length > 1 ? innerW / (data.length - 1) : 0
-  const y = (v: number) => padY + innerH - ((v - 1) / 4) * innerH
-  const points = data.map((d, i) => ({ x: padX + i * stepX, y: y(d.mood), ...d }))
+  const y = (v: number) => padY + innerH - ((v - min) / range) * innerH
+  const points = data.map((d, i) => ({ x: padX + i * stepX, y: y(d.value), ...d }))
   const line = points.map((p) => `${p.x},${p.y}`).join(' ')
   const area = `${padX},${padY + innerH} ${line} ${padX + innerW},${padY + innerH}`
   const showMarkers = data.length <= 24
   const labelStep = Math.max(1, Math.ceil(data.length / 6))
+  const gridTicks = Array.from({ length: 5 }, (_, i) => min + (range * i) / 4)
 
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label="気分の推移グラフ">
-      {[1, 2, 3, 4, 5].map((v) => (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label={ariaLabel}>
+      {gridTicks.map((v) => (
         <line
           key={v}
           x1={padX}
@@ -87,8 +101,8 @@ function MoodLineChart({ data }: { data: { label: string; mood: number }[] }) {
           y2={y(v)}
           stroke="var(--border)"
           strokeWidth={1}
-          strokeDasharray={v === 3 ? '0' : '3 4'}
-          opacity={v === 3 ? 0.7 : 0.4}
+          strokeDasharray={midValue !== undefined && v === midValue ? '0' : '3 4'}
+          opacity={midValue !== undefined && v === midValue ? 0.7 : 0.4}
         />
       ))}
       <polygon points={area} fill="var(--primary)" opacity={0.1} />
@@ -146,6 +160,7 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   const [fromDate, setFromDate] = useState(isoDaysAgo(14))
   const [toDate, setToDate] = useState(isoDaysAgo(0))
   const [copied, setCopied] = useState(false)
+  const [chartMetric, setChartMetric] = useState<'mood' | 'sleep'>('mood')
   const [supportTab, setSupportTab] = useState<'simple' | 'ai'>('simple')
   const [aiPoints, setAiPoints] = useState<AiPoint[] | null>(null)
   const [aiRequestKey, setAiRequestKey] = useState<string | null>(null)
@@ -180,12 +195,20 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   const avgMood = average(filtered.flatMap((r) => dayMoodEntries(r).map((e) => e.value)))
   const avgSleep = average(filtered.map((r) => r.sleepHours))
 
-  const chartData = filtered.flatMap((r) =>
+  const moodChartData = filtered.flatMap((r) =>
     dayMoodEntries(r).map(({ slot, value }) => ({
       label: `${formatRangeLabel(r.date)}${SLOT_LABEL[slot]}`,
-      mood: value,
+      value,
     })),
   )
+
+  const sleepChartData = filtered.map((r) => ({
+    label: formatRangeLabel(r.date),
+    value: r.sleepHours,
+  }))
+  const sleepDomainMax = Math.ceil(Math.max(8, ...sleepChartData.map((d) => d.value)) / 2) * 2
+
+  const activeChartData = chartMetric === 'mood' ? moodChartData : sleepChartData
 
   const talkingPoints = useMemo(() => generateTalkingPoints(filtered), [filtered])
 
@@ -358,8 +381,36 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
                 unit="時間"
               />
             </div>
-            {chartData.length >= 2 ? (
-              <MoodLineChart data={chartData} />
+            <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">
+              <button
+                type="button"
+                onClick={() => setChartMetric('mood')}
+                className={cn(
+                  'flex items-center justify-center gap-1 rounded-xl py-2 text-[13px] font-semibold transition-all',
+                  chartMetric === 'mood' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                )}
+              >
+                <Smile className="size-3.5" />
+                気分の推移
+              </button>
+              <button
+                type="button"
+                onClick={() => setChartMetric('sleep')}
+                className={cn(
+                  'flex items-center justify-center gap-1 rounded-xl py-2 text-[13px] font-semibold transition-all',
+                  chartMetric === 'sleep' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
+                )}
+              >
+                <Moon className="size-3.5" />
+                睡眠の推移
+              </button>
+            </div>
+            {activeChartData.length >= 2 ? (
+              chartMetric === 'mood' ? (
+                <TrendChart data={moodChartData} min={1} max={5} midValue={3} ariaLabel="気分の推移グラフ" />
+              ) : (
+                <TrendChart data={sleepChartData} min={0} max={sleepDomainMax} ariaLabel="睡眠時間の推移グラフ" />
+              )
             ) : (
               <p className="text-center text-xs text-muted-foreground">
                 グラフ表示には2日分以上の記録が必要です。
