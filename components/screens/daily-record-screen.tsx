@@ -19,7 +19,7 @@ import {
   Sparkles,
   Loader2,
 } from 'lucide-react'
-import { Chip, Section, SelectPill } from '@/components/ui-kit'
+import { Chip, Section, SelectPill, LeaveConfirmSheet } from '@/components/ui-kit'
 import {
   MOODS,
   SYMPTOMS,
@@ -90,66 +90,6 @@ function Toggle({
   )
 }
 
-function LeaveConfirmSheet({
-  canSave,
-  onSaveAndLeave,
-  onDiscardAndLeave,
-  onCancel,
-}: {
-  canSave: boolean
-  onSaveAndLeave: () => void
-  onDiscardAndLeave: () => void
-  onCancel: () => void
-}) {
-  return (
-    <div
-      className="fixed inset-0 z-40 flex items-end justify-center bg-foreground/30 backdrop-blur-[2px]"
-      onClick={onCancel}
-      role="dialog"
-      aria-modal="true"
-    >
-      <div
-        className="mx-auto w-full max-w-md animate-in slide-in-from-bottom-4 rounded-t-3xl border border-border bg-background p-5 pb-8 shadow-2xl duration-200"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="mb-1.5 text-lg font-extrabold text-foreground">保存しますか？</h2>
-        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
-          入力中の内容がまだ保存されていません。記録一覧に戻る前に保存しますか？
-        </p>
-        <div className="flex flex-col gap-2.5">
-          {canSave && (
-            <button
-              type="button"
-              onClick={onSaveAndLeave}
-              className="rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.99]"
-            >
-              保存して戻る
-            </button>
-          )}
-          <button
-            type="button"
-            onClick={onDiscardAndLeave}
-            className="rounded-2xl border border-destructive/30 bg-destructive/5 py-3.5 text-sm font-bold text-destructive transition-all hover:bg-destructive/10 active:scale-[0.99]"
-          >
-            保存せずに戻る
-          </button>
-          <button
-            type="button"
-            onClick={onCancel}
-            className="rounded-2xl py-3 text-sm font-bold text-muted-foreground transition-all hover:bg-muted active:scale-[0.99]"
-          >
-            キャンセル
-          </button>
-        </div>
-        {!canSave && (
-          <p className="mt-3 text-center text-xs text-muted-foreground">
-            保存するには気分を1つ以上選んでください
-          </p>
-        )}
-      </div>
-    </div>
-  )
-}
 
 export function DailyRecordScreen({
   date,
@@ -645,6 +585,10 @@ export function DailyRecordScreen({
       {showLeaveConfirm && (
         <LeaveConfirmSheet
           canSave={hasMood}
+          message="入力中の内容がまだ保存されていません。記録一覧に戻る前に保存しますか？"
+          saveLabel="保存して戻る"
+          discardLabel="保存せずに戻る"
+          cannotSaveHint="保存するには気分を1つ以上選んでください"
           onSaveAndLeave={() => {
             performSave()
             setShowLeaveConfirm(false)

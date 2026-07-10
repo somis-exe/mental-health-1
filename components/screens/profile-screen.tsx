@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { forwardRef, useImperativeHandle, useState } from 'react'
 import { Check, LogOut, UserRound } from 'lucide-react'
 import { Chip, FieldLabel, Section } from '@/components/ui-kit'
 import { CONCERNS, GENDERS, type Profile } from '@/lib/health'
@@ -42,15 +42,19 @@ function DateSelect({
   )
 }
 
-export function ProfileScreen({
-  profile,
-  onSave,
-  onLogout,
-}: {
-  profile: Profile
-  onSave: (p: Profile) => void
-  onLogout: () => void
-}) {
+export type ProfileScreenHandle = {
+  isDirty: () => boolean
+  save: () => void
+}
+
+export const ProfileScreen = forwardRef<
+  ProfileScreenHandle,
+  {
+    profile: Profile
+    onSave: (p: Profile) => void
+    onLogout: () => void
+  }
+>(function ProfileScreen({ profile, onSave, onLogout }, ref) {
   const [draft, setDraft] = useState<Profile>(profile)
   const [saved, setSaved] = useState(false)
 
@@ -72,6 +76,11 @@ export function ProfileScreen({
     setSaved(true)
     setTimeout(() => setSaved(false), 2000)
   }
+
+  useImperativeHandle(ref, () => ({
+    isDirty: () => JSON.stringify(draft) !== JSON.stringify(profile),
+    save: handleSave,
+  }))
 
   return (
     <div className="flex flex-col gap-5 px-5 pb-8 pt-4">
@@ -186,4 +195,4 @@ export function ProfileScreen({
       </button>
     </div>
   )
-}
+})

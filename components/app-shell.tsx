@@ -1,14 +1,14 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { AlertCircle, X } from 'lucide-react'
-import { Logo } from '@/components/ui-kit'
+import { Logo, LeaveConfirmSheet } from '@/components/ui-kit'
 import { BottomNav } from '@/components/bottom-nav'
 import { DateChoiceSheet } from '@/components/date-choice-sheet'
 import { DailyRecordScreen } from '@/components/screens/daily-record-screen'
 import { RecordListScreen } from '@/components/screens/record-list-screen'
 import { ReportScreen } from '@/components/screens/report-screen'
-import { ProfileScreen } from '@/components/screens/profile-screen'
+import { ProfileScreen, type ProfileScreenHandle } from '@/components/screens/profile-screen'
 import { type Screen, type Profile, type DailyRecord, dayKey } from '@/lib/health'
 
 const TITLES: Record<Screen, string> = {
@@ -39,6 +39,8 @@ export function AppShell({
   const [showDateChoice, setShowDateChoice] = useState(false)
   const [activeDate, setActiveDate] = useState<string | null>(null)
   const [reportVisited, setReportVisited] = useState(false)
+  const profileRef = useRef<ProfileScreenHandle>(null)
+  const [pendingScreen, setPendingScreen] = useState<Screen | null>(null)
 
   const activeRecord = activeDate
     ? (records.find((r) => dayKey(r.date) === dayKey(activeDate)) ?? null)
@@ -56,6 +58,10 @@ export function AppShell({
   }
 
   const goToTab = (s: Screen) => {
+    if (screen === 'profile' && s !== 'profile' && profileRef.current?.isDirty()) {
+      setPendingScreen(s)
+      return
+    }
     if (s === 'record') setRecordView('list')
     if (s === 'report') setReportVisited(true)
     setScreen(s)
@@ -109,12 +115,35 @@ export function AppShell({
           </div>
         )}
         {screen === 'profile' && (
-          <ProfileScreen profile={profile} onSave={onUpdateProfile} onLogout={onLogout} />
+          <ProfileScreen ref={profileRef} profile={profile} onSave={onUpdateProfile} onLogout={onLogout} />
         )}
       </main>
 
       {showDateChoice && (
         <DateChoiceSheet onSelect={startNewRecord} onClose={() => setShowDateChoice(false)} />
+      )}
+
+      {pendingScreen && (
+        <LeaveConfirmSheet
+          canSave
+          message="基本情報の変更が保存されていません。移動する前に保存しますか？"
+          onSaveAndLeave={() => {
+            profileRef.current?.save()
+            const target = pendingScreen
+            setPendingScreen(null)
+            if (target === 'record') setRecordView('list')
+            if (target === 'report') setReportVisited(true)
+            setScreen(target)
+          }}
+          onDiscardAndLeave={() => {
+            const target = pendingScreen
+            setPendingScreen(null)
+            if (target === 'record') setRecordView('list')
+            if (target === 'report') setReportVisited(true)
+            setScreen(target)
+          }}
+          onCancel={() => setPendingScreen(null)}
+        />
       )}
 
       <BottomNav active={screen} onChange={goToTab} />

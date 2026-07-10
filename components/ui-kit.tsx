@@ -100,3 +100,70 @@ export function FieldLabel({ children }: { children: React.ReactNode }) {
     <label className="mb-2 block text-sm font-semibold text-foreground">{children}</label>
   )
 }
+
+export function LeaveConfirmSheet({
+  title = '保存しますか？',
+  message = '入力中の内容がまだ保存されていません。移動する前に保存しますか？',
+  canSave,
+  saveLabel = '保存して移動する',
+  discardLabel = '保存せずに移動する',
+  cannotSaveHint,
+  onSaveAndLeave,
+  onDiscardAndLeave,
+  onCancel,
+}: {
+  title?: string
+  message?: string
+  canSave: boolean
+  saveLabel?: string
+  discardLabel?: string
+  cannotSaveHint?: string
+  onSaveAndLeave: () => void
+  onDiscardAndLeave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center bg-foreground/30 backdrop-blur-[2px]"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="mx-auto w-full max-w-md animate-in slide-in-from-bottom-4 rounded-t-3xl border border-border bg-background p-5 pb-8 shadow-2xl duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-1.5 text-lg font-extrabold text-foreground">{title}</h2>
+        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">{message}</p>
+        <div className="flex flex-col gap-2.5">
+          {canSave && (
+            <button
+              type="button"
+              onClick={onSaveAndLeave}
+              className="rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.99]"
+            >
+              {saveLabel}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDiscardAndLeave}
+            className="rounded-2xl border border-destructive/30 bg-destructive/5 py-3.5 text-sm font-bold text-destructive transition-all hover:bg-destructive/10 active:scale-[0.99]"
+          >
+            {discardLabel}
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-2xl py-3 text-sm font-bold text-muted-foreground transition-all hover:bg-muted active:scale-[0.99]"
+          >
+            キャンセル
+          </button>
+        </div>
+        {!canSave && cannotSaveHint && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">{cannotSaveHint}</p>
+        )}
+      </div>
+    </div>
+  )
+}
