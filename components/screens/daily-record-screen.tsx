@@ -419,13 +419,13 @@ export function DailyRecordScreen({
         {aiOpen && (
           <div className="mt-3">
             <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
-              今日の体調を日記のように自由に書いてください。AIが気分・睡眠・症状などの項目に自動で入力し、当てはまらない内容はメモに保存します。
+              今日の体調を日記/箇条書きのように自由に書いてください。AIが気分・睡眠・症状などの項目に自動で入力し、当てはまらない内容はメモに保存します。
             </p>
             <textarea
               value={aiDiaryText}
               onChange={(e) => setAiDiaryText(e.target.value)}
               rows={5}
-              placeholder="例）朝は頭が重くてだるかった。お昼を食べたら少し楽になった。夜0時に寝て7時に起きたけど、途中で一度目が覚めた…"
+              placeholder="例）朝は頭が重くてだるかった。お昼を食べたら少し楽になった。夜0時に寝て7時に起きたけど、途中で一度目が覚めた…/睡眠n時間/p~q時/だるい、朝普通、昼落ち着く、夜気分落ちる、食欲あり、入浴◯、薬×、家から出てない"
               className="w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
             {aiError && <p className="mt-2 text-sm text-destructive">{aiError}</p>}
