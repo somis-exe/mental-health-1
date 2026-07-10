@@ -430,11 +430,14 @@ export function DailyRecordScreen({
               今日の体調を日記/箇条書きのように自由に書いてください。
               AIが自動で入力し、当てはまらない内容はメモに保存します。
             </p>
+            <p className="mb-2 rounded-xl bg-muted/60 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
+              例）睡眠n時間/p~q時/(夜目が覚める)だるい、朝普通、昼落ち着く、夜気分落ちる、食欲あり、入浴◯、薬×、(運動×)家から出てない
+            </p>
             <textarea
               value={aiDiaryText}
               onChange={(e) => setAiDiaryText(e.target.value)}
               rows={5}
-              placeholder="例）睡眠n時間/p~q時/(夜目が覚める)だるい、朝普通、昼落ち着く、夜気分落ちる、食欲あり、入浴◯、薬×、(運動×)家から出てない"
+              placeholder="ここに入力してください"
               className="w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
             />
             {aiError && <p className="mt-2 text-sm text-destructive">{aiError}</p>}
