@@ -15,6 +15,8 @@ import {
   Check,
   ChevronLeft,
   ListChecks,
+  Sparkles,
+  Loader2,
 } from 'lucide-react'
 import { Chip, Section, SelectPill } from '@/components/ui-kit'
 import {
@@ -120,8 +122,74 @@ export function DailyRecordScreen({
   const [memo, setMemo] = useState(initialRecord?.memo ?? '')
   const [saved, setSaved] = useState(false)
 
+  const [aiOpen, setAiOpen] = useState(false)
+  const [aiDiaryText, setAiDiaryText] = useState('')
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+
   const toggleSymptom = (s: string) =>
     setSymptoms((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]))
+
+  const handleAiAnalyze = async () => {
+    if (!aiDiaryText.trim()) return
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const res = await fetch('/api/diary-parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: aiDiaryText }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok) throw new Error(data?.error ?? 'AI解析に失敗しました。')
+
+      const r = data.result as {
+        moodMorning: Mood | null
+        moodNoon: Mood | null
+        moodNight: Mood | null
+        symptoms: string[]
+        sleepStart: string | null
+        sleepEnd: string | null
+        sleepHours: number | null
+        sleepOnset: string | null
+        nightWaking: boolean | null
+        appetite: string | null
+        exercise: string | null
+        bath: boolean | null
+        medication: boolean | null
+        memo: string
+      }
+
+      if (r.moodMorning !== null) setMoodMorning(r.moodMorning)
+      if (r.moodNoon !== null) setMoodNoon(r.moodNoon)
+      if (r.moodNight !== null) setMoodNight(r.moodNight)
+      if (r.symptoms.length > 0) {
+        setSymptoms((prev) => Array.from(new Set([...prev, ...r.symptoms])))
+      }
+      if (r.sleepStart && r.sleepEnd) {
+        setSleepStart(snapToQuarterHour(r.sleepStart))
+        setSleepEnd(snapToQuarterHour(r.sleepEnd))
+      } else if (r.sleepHours !== null) {
+        const derived = deriveSleepTimes(r.sleepHours)
+        setSleepStart(derived.start)
+        setSleepEnd(derived.end)
+      }
+      if (r.sleepOnset) setSleepOnset(r.sleepOnset)
+      if (r.nightWaking !== null) setNightWaking(r.nightWaking)
+      if (r.appetite) setAppetite(r.appetite)
+      if (r.exercise) setExercise(r.exercise)
+      if (r.bath !== null) setBath(r.bath)
+      if (r.medication !== null) setMedication(r.medication)
+      if (r.memo) setMemo((prev) => (prev ? `${prev}\n${r.memo}` : r.memo))
+
+      setAiOpen(false)
+      setAiDiaryText('')
+    } catch (e) {
+      setAiError(e instanceof Error ? e.message : 'AI解析に失敗しました。')
+    } finally {
+      setAiLoading(false)
+    }
+  }
 
   const hasMood = moodMorning !== null || moodNoon !== null || moodNight !== null
   const repMood = useMemo(() => {
@@ -181,6 +249,48 @@ export function DailyRecordScreen({
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-bold text-primary">
             編集中
           </span>
+        )}
+      </div>
+
+      {/* AI diary entry */}
+      <div className="rounded-3xl border border-primary/25 bg-primary/[0.05] p-4">
+        <button
+          type="button"
+          onClick={() => setAiOpen((v) => !v)}
+          className="flex w-full items-center justify-between gap-2"
+        >
+          <span className="flex items-center gap-1.5 text-sm font-bold text-primary">
+            <Sparkles className="size-4.5" />
+            AIで記録する
+          </span>
+          <span className="text-xs font-medium text-muted-foreground">
+            {aiOpen ? '閉じる' : '日記を書くだけで自動入力'}
+          </span>
+        </button>
+
+        {aiOpen && (
+          <div className="mt-3">
+            <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+              今日の体調を日記のように自由に書いてください。AIが気分・睡眠・症状などの項目に自動で入力し、当てはまらない内容はメモに保存します。
+            </p>
+            <textarea
+              value={aiDiaryText}
+              onChange={(e) => setAiDiaryText(e.target.value)}
+              rows={5}
+              placeholder="例）朝は頭が重くてだるかった。お昼を食べたら少し楽になった。夜0時に寝て7時に起きたけど、途中で一度目が覚めた…"
+              className="w-full resize-none rounded-2xl border border-border bg-background px-4 py-3 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
+            {aiError && <p className="mt-2 text-sm text-destructive">{aiError}</p>}
+            <button
+              type="button"
+              onClick={handleAiAnalyze}
+              disabled={aiLoading || !aiDiaryText.trim()}
+              className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-3 text-sm font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {aiLoading ? <Loader2 className="size-4 animate-spin" /> : <Sparkles className="size-4" />}
+              {aiLoading ? '解析中…' : 'この内容を記録に反映する'}
+            </button>
+          </div>
         )}
       </div>
 
