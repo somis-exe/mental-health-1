@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { SYMPTOMS, APPETITE, EXERCISE, SLEEP_ONSET } from '@/lib/health'
 
-const MODEL = process.env.GEMINI_MODEL ?? 'gemini-2.5-flash'
+const MODEL = process.env.GEMINI_MODEL ?? 'gemini-flash-lite-latest'
 
 type ParsedDiary = {
   moodMorning: number | null
@@ -97,10 +97,11 @@ export async function POST(req: Request) {
     if (!res.ok) {
       const errText = await res.text().catch(() => '')
       console.error('Gemini API error', res.status, errText)
-      return NextResponse.json(
-        { error: 'AI解析に失敗しました。しばらくしてから再度お試しください。' },
-        { status: 502 },
-      )
+      const error =
+        res.status === 429
+          ? 'AIの利用上限に達しました。少し時間をおいて再度お試しください。'
+          : `AI解析に失敗しました（エラーコード: ${res.status}）。しばらくしてから再度お試しください。`
+      return NextResponse.json({ error }, { status: 502 })
     }
 
     const data = await res.json()
