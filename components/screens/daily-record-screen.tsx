@@ -89,6 +89,67 @@ function Toggle({
   )
 }
 
+function LeaveConfirmSheet({
+  canSave,
+  onSaveAndLeave,
+  onDiscardAndLeave,
+  onCancel,
+}: {
+  canSave: boolean
+  onSaveAndLeave: () => void
+  onDiscardAndLeave: () => void
+  onCancel: () => void
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-40 flex items-end justify-center bg-foreground/30 backdrop-blur-[2px]"
+      onClick={onCancel}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div
+        className="mx-auto w-full max-w-md animate-in slide-in-from-bottom-4 rounded-t-3xl border border-border bg-background p-5 pb-8 shadow-2xl duration-200"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="mb-1.5 text-lg font-extrabold text-foreground">保存しますか？</h2>
+        <p className="mb-5 text-sm leading-relaxed text-muted-foreground">
+          入力中の内容がまだ保存されていません。記録一覧に戻る前に保存しますか？
+        </p>
+        <div className="flex flex-col gap-2.5">
+          {canSave && (
+            <button
+              type="button"
+              onClick={onSaveAndLeave}
+              className="rounded-2xl bg-primary py-3.5 text-sm font-bold text-primary-foreground transition-all hover:bg-primary/90 active:scale-[0.99]"
+            >
+              保存して戻る
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={onDiscardAndLeave}
+            className="rounded-2xl border border-destructive/30 bg-destructive/5 py-3.5 text-sm font-bold text-destructive transition-all hover:bg-destructive/10 active:scale-[0.99]"
+          >
+            保存せずに戻る
+          </button>
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-2xl py-3 text-sm font-bold text-muted-foreground transition-all hover:bg-muted active:scale-[0.99]"
+          >
+            キャンセル
+          </button>
+        </div>
+        {!canSave && (
+          <p className="mt-3 text-center text-xs text-muted-foreground">
+            保存するには気分を1つ以上選んでください
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function DailyRecordScreen({
   date,
   initialRecord,
@@ -126,11 +187,63 @@ export function DailyRecordScreen({
   const [medication, setMedication] = useState<boolean | null>(initialRecord?.medication ?? null)
   const [memo, setMemo] = useState(initialRecord?.memo ?? '')
   const [saved, setSaved] = useState(false)
+  const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+
+  const snapshotOf = (v: {
+    moodMorning: Mood | null
+    moodNoon: Mood | null
+    moodNight: Mood | null
+    symptoms: string[]
+    sleepStart: string
+    sleepEnd: string
+    sleepOnset: string | null
+    nightWaking: boolean | null
+    appetite: string | null
+    exercise: string | null
+    bath: boolean | null
+    medication: boolean | null
+    memo: string
+  }) => JSON.stringify(v)
+
+  const [lastSavedSnapshot, setLastSavedSnapshot] = useState(() =>
+    snapshotOf({
+      moodMorning: initialRecord?.moodMorning ?? null,
+      moodNoon: initialRecord?.moodNoon ?? null,
+      moodNight: initialRecord?.moodNight ?? null,
+      symptoms: initialRecord?.symptoms ?? [],
+      sleepStart: initialSleepTimes.start,
+      sleepEnd: initialSleepTimes.end,
+      sleepOnset: initialRecord?.sleepOnset ?? null,
+      nightWaking: initialRecord?.nightWaking ?? null,
+      appetite: initialRecord?.appetite ?? null,
+      exercise: initialRecord?.exercise ?? null,
+      bath: initialRecord?.bath ?? null,
+      medication: initialRecord?.medication ?? null,
+      memo: initialRecord?.memo ?? '',
+    }),
+  )
 
   const [aiOpen, setAiOpen] = useState(false)
   const [aiDiaryText, setAiDiaryText] = useState('')
   const [aiLoading, setAiLoading] = useState(false)
   const [aiError, setAiError] = useState<string | null>(null)
+
+  const isDirty =
+    snapshotOf({
+      moodMorning,
+      moodNoon,
+      moodNight,
+      symptoms,
+      sleepStart,
+      sleepEnd,
+      sleepOnset,
+      nightWaking,
+      appetite,
+      exercise,
+      bath,
+      medication,
+      memo,
+    }) !== lastSavedSnapshot || aiDiaryText.trim() !== ''
 
   const toggleSymptom = (s: string) =>
     setSymptoms((prev) => (prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s]))
@@ -211,9 +324,26 @@ export function DailyRecordScreen({
     return { tired, alert }
   }, [saved, repMood, sleepHours, symptoms])
 
-  const handleSave = () => {
+  const performSave = () => {
     if (!hasMood) return
     setSaved(true)
+    setLastSavedSnapshot(
+      snapshotOf({
+        moodMorning,
+        moodNoon,
+        moodNight,
+        symptoms,
+        sleepStart,
+        sleepEnd,
+        sleepOnset,
+        nightWaking,
+        appetite,
+        exercise,
+        bath,
+        medication,
+        memo,
+      }),
+    )
     onSave({
       id: initialRecord?.id,
       date,
@@ -232,7 +362,19 @@ export function DailyRecordScreen({
       medication,
       memo,
     })
+  }
+
+  const handleSave = () => {
+    performSave()
     setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 80)
+  }
+
+  const handleBackClick = () => {
+    if (isDirty) {
+      setShowLeaveConfirm(true)
+    } else {
+      onBack?.()
+    }
   }
 
   return (
@@ -241,7 +383,7 @@ export function DailyRecordScreen({
       {onBack && (
         <button
           type="button"
-          onClick={onBack}
+          onClick={handleBackClick}
           className="-mb-1 -ml-1 flex w-fit items-center gap-1 rounded-full py-1 pr-3 text-sm font-semibold text-muted-foreground transition-colors hover:text-foreground"
         >
           <ChevronLeft className="size-4.5" />
@@ -478,7 +620,7 @@ export function DailyRecordScreen({
           {onBack && (
             <button
               type="button"
-              onClick={onBack}
+              onClick={handleBackClick}
               className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3.5 text-sm font-bold text-foreground transition-all hover:bg-muted active:scale-[0.99]"
             >
               <ListChecks className="size-4.5 text-primary" />
@@ -486,6 +628,22 @@ export function DailyRecordScreen({
             </button>
           )}
         </div>
+      )}
+
+      {showLeaveConfirm && (
+        <LeaveConfirmSheet
+          canSave={hasMood}
+          onSaveAndLeave={() => {
+            performSave()
+            setShowLeaveConfirm(false)
+            onBack?.()
+          }}
+          onDiscardAndLeave={() => {
+            setShowLeaveConfirm(false)
+            onBack?.()
+          }}
+          onCancel={() => setShowLeaveConfirm(false)}
+        />
       )}
     </div>
   )
