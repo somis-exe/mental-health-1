@@ -26,6 +26,8 @@ import {
   formatFullDate,
   sleepDurationHours,
   deriveSleepTimes,
+  snapToQuarterHour,
+  TIME_OPTIONS_15MIN,
   type DailyRecord,
   type Mood,
 } from '@/lib/health'
@@ -104,7 +106,7 @@ export function DailyRecordScreen({
   const [symptoms, setSymptoms] = useState<string[]>(initialRecord?.symptoms ?? [])
   const initialSleepTimes =
     initialRecord?.sleepStart && initialRecord?.sleepEnd
-      ? { start: initialRecord.sleepStart, end: initialRecord.sleepEnd }
+      ? { start: snapToQuarterHour(initialRecord.sleepStart), end: snapToQuarterHour(initialRecord.sleepEnd) }
       : deriveSleepTimes(initialRecord?.sleepHours ?? 7)
   const [sleepStart, setSleepStart] = useState(initialSleepTimes.start)
   const [sleepEnd, setSleepEnd] = useState(initialSleepTimes.end)
@@ -211,24 +213,32 @@ export function DailyRecordScreen({
           <div className="flex items-end gap-2">
             <label className="flex-1">
               <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">就寝時刻</span>
-              <input
-                type="time"
-                step={900}
+              <select
                 value={sleepStart}
                 onChange={(e) => setSleepStart(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
+              >
+                {TIME_OPTIONS_15MIN.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </label>
             <span className="pb-3 text-sm font-bold text-muted-foreground">→</span>
             <label className="flex-1">
               <span className="mb-1.5 block text-xs font-semibold text-muted-foreground">起床時刻</span>
-              <input
-                type="time"
-                step={900}
+              <select
                 value={sleepEnd}
                 onChange={(e) => setSleepEnd(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
-              />
+              >
+                {TIME_OPTIONS_15MIN.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
             </label>
           </div>
           <div className="mt-3 flex items-baseline justify-between rounded-2xl bg-primary/[0.06] px-4 py-3">

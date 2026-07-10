@@ -87,6 +87,14 @@ export function sleepDurationHours(start: string, end: string): number {
   return Math.round((diff / 60) * 4) / 4
 }
 
+/** Nearest 15-minute mark, so times from before this granularity was enforced still fit the picker. */
+export function snapToQuarterHour(time: string): string {
+  return minutesToTime(Math.round(timeToMinutes(time) / 15) * 15)
+}
+
+/** "00:00", "00:15", ... "23:45" — the fixed set of selectable bedtime/wake times. */
+export const TIME_OPTIONS_15MIN: string[] = Array.from({ length: 96 }, (_, i) => minutesToTime(i * 15))
+
 /** Bedtime/wake time (23:00 start) that reproduce a given sleep duration, for records saved before times were tracked. */
 export function deriveSleepTimes(hours: number): { start: string; end: string } {
   const start = '23:00'
