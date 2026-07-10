@@ -13,11 +13,11 @@ function buildPrompt(records: DailyRecord[], rangeLabel?: string): string {
     const parts = [
       `日付: ${r.date.slice(0, 10)}`,
       moodParts.length ? `気分: ${moodParts.join(' ')}` : null,
-      `睡眠時間: ${r.sleepHours}時間`,
-      `寝つき: ${r.sleepOnset}`,
+      r.sleepHours !== null ? `睡眠時間: ${r.sleepHours}時間` : null,
+      r.sleepOnset ? `寝つき: ${r.sleepOnset}` : null,
       r.nightWaking ? '夜間に目が覚めた' : null,
-      `食欲: ${r.appetite}`,
-      `運動: ${r.exercise}`,
+      r.appetite ? `食欲: ${r.appetite}` : null,
+      r.exercise ? `運動: ${r.exercise}` : null,
       r.symptoms.length ? `症状: ${r.symptoms.join('、')}` : null,
       r.memo ? `メモ: ${r.memo}` : null,
     ].filter(Boolean)

@@ -57,13 +57,13 @@ export type DailyRecord = {
   symptoms: string[]
   sleepStart: string | null
   sleepEnd: string | null
-  sleepHours: number
-  sleepOnset: string
-  nightWaking: boolean
-  appetite: string
-  exercise: string
-  bath: boolean
-  medication: boolean
+  sleepHours: number | null
+  sleepOnset: string | null
+  nightWaking: boolean | null
+  appetite: string | null
+  exercise: string | null
+  bath: boolean | null
+  medication: boolean | null
   memo: string
 }
 
@@ -234,13 +234,13 @@ export type DailyRecordRow = {
   symptoms: string[]
   sleep_start: string | null
   sleep_end: string | null
-  sleep_hours: number
-  sleep_onset: string
-  night_waking: boolean
-  appetite: string
-  exercise: string
-  bath: boolean
-  medication: boolean
+  sleep_hours: number | null
+  sleep_onset: string | null
+  night_waking: boolean | null
+  appetite: string | null
+  exercise: string | null
+  bath: boolean | null
+  medication: boolean | null
   memo: string
 }
 
@@ -294,7 +294,8 @@ export function generateTalkingPoints(records: DailyRecord[]): string[] {
   const n = sorted.length
   const allMoodValues = sorted.flatMap((r) => dayMoodEntries(r).map((e) => e.value))
   const avgMood = allMoodValues.length > 0 ? allMoodValues.reduce((s, v) => s + v, 0) / allMoodValues.length : null
-  const avgSleep = sorted.reduce((s, r) => s + r.sleepHours, 0) / n
+  const sleepValues = sorted.map((r) => r.sleepHours).filter((h): h is number => h !== null)
+  const avgSleep = sleepValues.length > 0 ? sleepValues.reduce((s, v) => s + v, 0) / sleepValues.length : null
 
   const points: string[] = []
 
@@ -311,9 +312,9 @@ export function generateTalkingPoints(records: DailyRecord[]): string[] {
   }
 
   const recentThree = sorted.slice(-3)
-  if (recentThree.length === 3 && recentThree.every((r) => r.sleepHours < 5)) {
+  if (recentThree.length === 3 && recentThree.every((r) => r.sleepHours !== null && r.sleepHours < 5)) {
     points.push('直近3日間、睡眠時間が5時間を切る日が続いています。')
-  } else if (avgSleep < 5) {
+  } else if (avgSleep !== null && avgSleep < 5) {
     points.push(`この期間の平均睡眠時間は${avgSleep.toFixed(1)}時間と短めです。`)
   }
 
@@ -338,7 +339,8 @@ export function generateTalkingPoints(records: DailyRecord[]): string[] {
 
   if (points.length === 0) {
     const moodPart = avgMood !== null ? `気分の平均は${avgMood.toFixed(1)} / 5、` : ''
-    points.push(`この期間の${moodPart}平均睡眠時間は${avgSleep.toFixed(1)}時間でした。大きな変化は見られません。`)
+    const sleepPart = avgSleep !== null ? `平均睡眠時間は${avgSleep.toFixed(1)}時間でした。` : '記録が少なく、傾向はまだ見えません。'
+    points.push(`この期間の${moodPart}${sleepPart}大きな変化は見られません。`)
   }
 
   return points.slice(0, 5)

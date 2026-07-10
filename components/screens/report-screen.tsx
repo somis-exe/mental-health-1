@@ -201,7 +201,9 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   }, [records, range, fromDate, toDate])
 
   const avgMood = average(filtered.flatMap((r) => dayMoodEntries(r).map((e) => e.value)))
-  const avgSleep = average(filtered.map((r) => r.sleepHours))
+  const avgSleep = average(
+    filtered.map((r) => r.sleepHours).filter((h): h is number => h !== null),
+  )
 
   const moodChartData = filtered.flatMap((r) =>
     dayMoodEntries(r).map(({ slot, value }) => ({
@@ -210,10 +212,12 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
     })),
   )
 
-  const sleepChartData = filtered.map((r) => ({
-    label: formatRangeLabel(r.date),
-    value: r.sleepHours,
-  }))
+  const sleepChartData = filtered
+    .filter((r): r is DailyRecord & { sleepHours: number } => r.sleepHours !== null)
+    .map((r) => ({
+      label: formatRangeLabel(r.date),
+      value: r.sleepHours,
+    }))
   const sleepDomainMax = Math.ceil(Math.max(8, ...sleepChartData.map((d) => d.value)) / 2) * 2
   const sleepTicks = Array.from({ length: sleepDomainMax / 2 + 1 }, (_, i) => i * 2)
 

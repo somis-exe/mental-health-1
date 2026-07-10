@@ -49,10 +49,12 @@ function RecordCard({ record, onEdit }: { record: DailyRecord; onEdit: () => voi
             </div>
           )}
           <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] font-medium text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <Moon className="size-3.5" />
-              {record.sleepHours}時間
-            </span>
+            {record.sleepHours !== null && (
+              <span className="flex items-center gap-1">
+                <Moon className="size-3.5" />
+                {record.sleepHours}時間
+              </span>
+            )}
             {record.medication && (
               <span className="flex items-center gap-1">
                 <Pill className="size-3.5" />

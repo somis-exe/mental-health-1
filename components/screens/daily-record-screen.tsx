@@ -74,7 +74,7 @@ function Toggle({
   onChange,
   labels = ['なし', 'あり'],
 }: {
-  value: boolean
+  value: boolean | null
   onChange: (v: boolean) => void
   labels?: [string, string]
 }) {
@@ -109,16 +109,21 @@ export function DailyRecordScreen({
   const initialSleepTimes =
     initialRecord?.sleepStart && initialRecord?.sleepEnd
       ? { start: snapToQuarterHour(initialRecord.sleepStart), end: snapToQuarterHour(initialRecord.sleepEnd) }
-      : deriveSleepTimes(initialRecord?.sleepHours ?? 7)
+      : initialRecord?.sleepHours != null
+        ? deriveSleepTimes(initialRecord.sleepHours)
+        : { start: '', end: '' }
   const [sleepStart, setSleepStart] = useState(initialSleepTimes.start)
   const [sleepEnd, setSleepEnd] = useState(initialSleepTimes.end)
-  const sleepHours = useMemo(() => sleepDurationHours(sleepStart, sleepEnd), [sleepStart, sleepEnd])
-  const [sleepOnset, setSleepOnset] = useState<string>(initialRecord?.sleepOnset ?? SLEEP_ONSET[1])
-  const [nightWaking, setNightWaking] = useState(initialRecord?.nightWaking ?? false)
-  const [appetite, setAppetite] = useState<string>(initialRecord?.appetite ?? APPETITE[1])
-  const [exercise, setExercise] = useState<string>(initialRecord?.exercise ?? EXERCISE[0])
-  const [bath, setBath] = useState(initialRecord?.bath ?? true)
-  const [medication, setMedication] = useState(initialRecord?.medication ?? false)
+  const sleepHours = useMemo(
+    () => (sleepStart && sleepEnd ? sleepDurationHours(sleepStart, sleepEnd) : null),
+    [sleepStart, sleepEnd],
+  )
+  const [sleepOnset, setSleepOnset] = useState<string | null>(initialRecord?.sleepOnset ?? null)
+  const [nightWaking, setNightWaking] = useState<boolean | null>(initialRecord?.nightWaking ?? null)
+  const [appetite, setAppetite] = useState<string | null>(initialRecord?.appetite ?? null)
+  const [exercise, setExercise] = useState<string | null>(initialRecord?.exercise ?? null)
+  const [bath, setBath] = useState<boolean | null>(initialRecord?.bath ?? null)
+  const [medication, setMedication] = useState<boolean | null>(initialRecord?.medication ?? null)
   const [memo, setMemo] = useState(initialRecord?.memo ?? '')
   const [saved, setSaved] = useState(false)
 
@@ -200,8 +205,9 @@ export function DailyRecordScreen({
 
   const feedback = useMemo(() => {
     if (!saved || repMood === null) return null
-    const tired = repMood <= 2 || sleepHours < 5 || symptoms.length >= 3
-    const alert = repMood <= 2 && (sleepHours < 5 || symptoms.length >= 3)
+    const shortSleep = sleepHours !== null && sleepHours < 5
+    const tired = repMood <= 2 || shortSleep || symptoms.length >= 3
+    const alert = repMood <= 2 && (shortSleep || symptoms.length >= 3)
     return { tired, alert }
   }, [saved, repMood, sleepHours, symptoms])
 
@@ -215,8 +221,8 @@ export function DailyRecordScreen({
       moodNoon,
       moodNight,
       symptoms,
-      sleepStart,
-      sleepEnd,
+      sleepStart: sleepStart || null,
+      sleepEnd: sleepEnd || null,
       sleepHours,
       sleepOnset,
       nightWaking,
@@ -328,6 +334,7 @@ export function DailyRecordScreen({
                 onChange={(e) => setSleepStart(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
+                <option value="">未設定</option>
                 {TIME_OPTIONS_15MIN.map((t) => (
                   <option key={t} value={t}>
                     {t}
@@ -343,6 +350,7 @@ export function DailyRecordScreen({
                 onChange={(e) => setSleepEnd(e.target.value)}
                 className="w-full rounded-xl border border-border bg-background px-3 py-2.5 text-sm font-medium text-foreground outline-none transition-all focus:border-primary focus:ring-2 focus:ring-primary/20"
               >
+                <option value="">未設定</option>
                 {TIME_OPTIONS_15MIN.map((t) => (
                   <option key={t} value={t}>
                     {t}
@@ -354,7 +362,7 @@ export function DailyRecordScreen({
           <div className="mt-3 flex items-baseline justify-between rounded-2xl bg-primary/[0.06] px-4 py-3">
             <span className="text-sm font-medium text-muted-foreground">睡眠時間</span>
             <span className="font-rounded text-xl font-extrabold text-primary">
-              {sleepHours}
+              {sleepHours !== null ? sleepHours : '—'}
               <span className="ml-0.5 text-sm font-semibold text-muted-foreground">時間</span>
             </span>
           </div>
