@@ -55,6 +55,8 @@ export type DailyRecord = {
   moodNoon: Mood | null
   moodNight: Mood | null
   symptoms: string[]
+  sleepStart: string | null
+  sleepEnd: string | null
   sleepHours: number
   sleepOnset: string
   nightWaking: boolean
@@ -63,6 +65,32 @@ export type DailyRecord = {
   bath: boolean
   medication: boolean
   memo: string
+}
+
+/** "HH:MM" -> minutes since 00:00. */
+export function timeToMinutes(time: string): number {
+  const [h, m] = time.split(':').map(Number)
+  return h * 60 + m
+}
+
+/** Minutes since 00:00 (wrapped to 0-1439) -> "HH:MM". */
+export function minutesToTime(minutes: number): string {
+  const wrapped = ((minutes % 1440) + 1440) % 1440
+  const h = Math.floor(wrapped / 60)
+  const m = wrapped % 60
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+/** Hours between bedtime and wake time, handling sleep that crosses midnight. */
+export function sleepDurationHours(start: string, end: string): number {
+  const diff = (timeToMinutes(end) - timeToMinutes(start) + 1440) % 1440
+  return Math.round((diff / 60) * 4) / 4
+}
+
+/** Bedtime/wake time (23:00 start) that reproduce a given sleep duration, for records saved before times were tracked. */
+export function deriveSleepTimes(hours: number): { start: string; end: string } {
+  const start = '23:00'
+  return { start, end: minutesToTime(timeToMinutes(start) + hours * 60) }
 }
 
 /** Non-null (slot, value) pairs for a record, in morning→noon→night order. */
@@ -196,6 +224,8 @@ export type DailyRecordRow = {
   mood_noon: number | null
   mood_night: number | null
   symptoms: string[]
+  sleep_start: string | null
+  sleep_end: string | null
   sleep_hours: number
   sleep_onset: string
   night_waking: boolean
@@ -214,6 +244,8 @@ export function recordFromRow(row: DailyRecordRow): DailyRecord {
     moodNoon: row.mood_noon as Mood | null,
     moodNight: row.mood_night as Mood | null,
     symptoms: row.symptoms,
+    sleepStart: row.sleep_start,
+    sleepEnd: row.sleep_end,
     sleepHours: row.sleep_hours,
     sleepOnset: row.sleep_onset,
     nightWaking: row.night_waking,
@@ -233,6 +265,8 @@ export function recordToRow(record: DailyRecord, userId: string) {
     mood_noon: record.moodNoon,
     mood_night: record.moodNight,
     symptoms: record.symptoms,
+    sleep_start: record.sleepStart,
+    sleep_end: record.sleepEnd,
     sleep_hours: record.sleepHours,
     sleep_onset: record.sleepOnset,
     night_waking: record.nightWaking,
