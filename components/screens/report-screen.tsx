@@ -66,44 +66,52 @@ function TrendChart({
   min,
   max,
   midValue,
+  ticks,
   ariaLabel,
 }: {
   data: { label: string; value: number }[]
   min: number
   max: number
   midValue?: number
+  ticks: number[]
   ariaLabel: string
 }) {
   const w = 320
   const h = 140
-  const padX = 16
+  const padRight = 12
   const padY = 18
-  const innerW = w - padX * 2
+  const plotX0 = 34
+  const plotX1 = w - padRight
+  const innerW = plotX1 - plotX0
   const innerH = h - padY * 2
   const range = max - min || 1
   const stepX = data.length > 1 ? innerW / (data.length - 1) : 0
   const y = (v: number) => padY + innerH - ((v - min) / range) * innerH
-  const points = data.map((d, i) => ({ x: padX + i * stepX, y: y(d.value), ...d }))
+  const points = data.map((d, i) => ({ x: plotX0 + i * stepX, y: y(d.value), ...d }))
   const line = points.map((p) => `${p.x},${p.y}`).join(' ')
-  const area = `${padX},${padY + innerH} ${line} ${padX + innerW},${padY + innerH}`
+  const area = `${plotX0},${padY + innerH} ${line} ${plotX1},${padY + innerH}`
   const showMarkers = data.length <= 24
   const labelStep = Math.max(1, Math.ceil(data.length / 6))
-  const gridTicks = Array.from({ length: 5 }, (_, i) => min + (range * i) / 4)
+  const formatTick = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label={ariaLabel}>
-      {gridTicks.map((v) => (
-        <line
-          key={v}
-          x1={padX}
-          x2={padX + innerW}
-          y1={y(v)}
-          y2={y(v)}
-          stroke="var(--border)"
-          strokeWidth={1}
-          strokeDasharray={midValue !== undefined && v === midValue ? '0' : '3 4'}
-          opacity={midValue !== undefined && v === midValue ? 0.7 : 0.4}
-        />
+      {ticks.map((v) => (
+        <g key={v}>
+          <line
+            x1={plotX0}
+            x2={plotX1}
+            y1={y(v)}
+            y2={y(v)}
+            stroke="var(--border)"
+            strokeWidth={1}
+            strokeDasharray={midValue !== undefined && v === midValue ? '0' : '3 4'}
+            opacity={midValue !== undefined && v === midValue ? 0.7 : 0.4}
+          />
+          <text x={plotX0 - 6} y={y(v)} dy={3} textAnchor="end" className="fill-muted-foreground" fontSize={9}>
+            {formatTick(v)}
+          </text>
+        </g>
       ))}
       <polygon points={area} fill="var(--primary)" opacity={0.1} />
       <polyline
@@ -207,6 +215,7 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
     value: r.sleepHours,
   }))
   const sleepDomainMax = Math.ceil(Math.max(8, ...sleepChartData.map((d) => d.value)) / 2) * 2
+  const sleepTicks = Array.from({ length: sleepDomainMax / 2 + 1 }, (_, i) => i * 2)
 
   const activeChartData = chartMetric === 'mood' ? moodChartData : sleepChartData
 
@@ -407,9 +416,22 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
             </div>
             {activeChartData.length >= 2 ? (
               chartMetric === 'mood' ? (
-                <TrendChart data={moodChartData} min={1} max={5} midValue={3} ariaLabel="気分の推移グラフ" />
+                <TrendChart
+                  data={moodChartData}
+                  min={1}
+                  max={5}
+                  midValue={3}
+                  ticks={[1, 2, 3, 4, 5]}
+                  ariaLabel="気分の推移グラフ"
+                />
               ) : (
-                <TrendChart data={sleepChartData} min={0} max={sleepDomainMax} ariaLabel="睡眠時間の推移グラフ" />
+                <TrendChart
+                  data={sleepChartData}
+                  min={0}
+                  max={sleepDomainMax}
+                  ticks={sleepTicks}
+                  ariaLabel="睡眠時間の推移グラフ"
+                />
               )
             ) : (
               <p className="text-center text-xs text-muted-foreground">
