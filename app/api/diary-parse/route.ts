@@ -1,5 +1,13 @@
 import { NextResponse } from 'next/server'
-import { SYMPTOMS, APPETITE, EXERCISE, SLEEP_ONSET } from '@/lib/health'
+import {
+  SYMPTOMS,
+  APPETITE,
+  EXERCISE,
+  SLEEP_ONSET,
+  timeToMinutes,
+  minutesToTime,
+  snapToQuarterHour,
+} from '@/lib/health'
 
 const MODEL = process.env.GEMINI_MODEL ?? 'gemini-flash-lite-latest'
 
@@ -33,8 +41,9 @@ function buildPrompt(text: string): string {
     '',
     '- moodMorning, moodNoon, moodNight: 朝・昼・夜の気分。1(非常に悪い)〜5(非常に良い)の整数。言及がなければnull。',
     `- symptoms: 次の候補から当てはまるものだけを配列で: ${SYMPTOMS.join('、')}`,
-    '- sleepStart, sleepEnd: 就寝時刻と起床時刻（HH:MM、24時間表記、15分単位に丸める）。時刻の言及がなければ両方null。',
-    '- sleepHours: 具体的な時刻の言及はないが睡眠時間（数値、時間）の言及がある場合のみ設定。時刻がわかる場合はsleepStart/sleepEndを優先しsleepHoursはnullにする。',
+    '- sleepStart: 就寝時刻の言及があればHH:MM（24時間表記、15分単位に丸める）。言及がなければnull。',
+    '- sleepEnd: 起床時刻の言及があればHH:MM（24時間表記、15分単位に丸める）。言及がなければnull。',
+    '- sleepHours: 睡眠時間（数値、時間）の言及があれば設定。言及がなければnull。sleepStart・sleepEndの一方または両方と同時に言及されていてもよい（例:「6時間睡眠、7時起床」なら sleepEnd="07:00", sleepHours=6, sleepStartはnull）。',
     `- sleepOnset: 次のいずれか、言及がなければnull: ${SLEEP_ONSET.join('、')}`,
     '- nightWaking: 夜中に目が覚めたかどうか。true/false、言及がなければnull。',
     `- appetite: 次のいずれか、言及がなければnull: ${APPETITE.join('、')}`,
@@ -118,6 +127,18 @@ export async function POST(req: Request) {
     }
 
     const sleepHoursRaw = Number(parsed.sleepHours)
+    const sleepHours =
+      Number.isFinite(sleepHoursRaw) && sleepHoursRaw > 0 && sleepHoursRaw <= 24 ? sleepHoursRaw : null
+    let sleepStart = asTime(parsed.sleepStart)
+    let sleepEnd = asTime(parsed.sleepEnd)
+
+    // Only one endpoint was mentioned directly — derive the other from the stated duration.
+    if (sleepStart && !sleepEnd && sleepHours !== null) {
+      sleepEnd = snapToQuarterHour(minutesToTime(timeToMinutes(sleepStart) + sleepHours * 60))
+    } else if (sleepEnd && !sleepStart && sleepHours !== null) {
+      sleepStart = snapToQuarterHour(minutesToTime(timeToMinutes(sleepEnd) - sleepHours * 60))
+    }
+
     const result: ParsedDiary = {
       moodMorning: asMood(parsed.moodMorning),
       moodNoon: asMood(parsed.moodNoon),
@@ -125,9 +146,9 @@ export async function POST(req: Request) {
       symptoms: Array.isArray(parsed.symptoms)
         ? parsed.symptoms.filter((s): s is string => typeof s === 'string' && SYMPTOMS.includes(s))
         : [],
-      sleepStart: asTime(parsed.sleepStart),
-      sleepEnd: asTime(parsed.sleepEnd),
-      sleepHours: Number.isFinite(sleepHoursRaw) && sleepHoursRaw > 0 && sleepHoursRaw <= 24 ? sleepHoursRaw : null,
+      sleepStart,
+      sleepEnd,
+      sleepHours,
       sleepOnset: asEnum(parsed.sleepOnset, SLEEP_ONSET),
       nightWaking: asBool(parsed.nightWaking),
       appetite: asEnum(parsed.appetite, APPETITE),
@@ -135,11 +156,6 @@ export async function POST(req: Request) {
       bath: asBool(parsed.bath),
       medication: asBool(parsed.medication),
       memo: typeof parsed.memo === 'string' ? parsed.memo.trim() : '',
-    }
-
-    if (result.sleepStart === null || result.sleepEnd === null) {
-      result.sleepStart = null
-      result.sleepEnd = null
     }
 
     return NextResponse.json({ result })
