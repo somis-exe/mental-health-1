@@ -78,7 +78,7 @@ const METRIC_META: Record<
   exercise: {
     label: '運動',
     icon: <Activity className="size-3.5" />,
-    color: 'light-dark(#008300, #008300)',
+    color: 'light-dark(#eda100, #c98500)',
     min: 0,
     max: 2,
     ticks: [0, 1, 2],
