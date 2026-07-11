@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { forwardRef, useImperativeHandle, useMemo, useState } from 'react'
 import {
   CalendarDays,
   Moon,
@@ -91,17 +91,21 @@ function Toggle({
 }
 
 
-export function DailyRecordScreen({
-  date,
-  initialRecord,
-  onSave,
-  onBack,
-}: {
-  date: string
-  initialRecord?: DailyRecord | null
-  onSave: (r: DailyRecord) => void
-  onBack?: () => void
-}) {
+export type DailyRecordScreenHandle = {
+  isDirty: () => boolean
+  canSave: () => boolean
+  save: () => void
+}
+
+export const DailyRecordScreen = forwardRef<
+  DailyRecordScreenHandle,
+  {
+    date: string
+    initialRecord?: DailyRecord | null
+    onSave: (r: DailyRecord) => void
+    onBack?: () => void
+  }
+>(function DailyRecordScreen({ date, initialRecord, onSave, onBack }, ref) {
   const isEditing = Boolean(initialRecord)
   const dateLabel = useMemo(() => formatFullDate(date), [date])
   const [moodMorning, setMoodMorning] = useState<Mood | null>(initialRecord?.moodMorning ?? null)
@@ -309,6 +313,12 @@ export function DailyRecordScreen({
     performSave()
     setTimeout(() => window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }), 80)
   }
+
+  useImperativeHandle(ref, () => ({
+    isDirty: () => isDirty,
+    canSave: () => hasMood,
+    save: performSave,
+  }))
 
   const handleBackClick = () => {
     if (isDirty) {
@@ -603,4 +613,4 @@ export function DailyRecordScreen({
       )}
     </div>
   )
-}
+})

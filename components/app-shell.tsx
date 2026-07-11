@@ -5,7 +5,7 @@ import { AlertCircle, X } from 'lucide-react'
 import { Logo, LeaveConfirmSheet } from '@/components/ui-kit'
 import { BottomNav } from '@/components/bottom-nav'
 import { DateChoiceSheet } from '@/components/date-choice-sheet'
-import { DailyRecordScreen } from '@/components/screens/daily-record-screen'
+import { DailyRecordScreen, type DailyRecordScreenHandle } from '@/components/screens/daily-record-screen'
 import { RecordListScreen } from '@/components/screens/record-list-screen'
 import { ReportScreen } from '@/components/screens/report-screen'
 import { ProfileScreen, type ProfileScreenHandle } from '@/components/screens/profile-screen'
@@ -40,7 +40,8 @@ export function AppShell({
   const [activeDate, setActiveDate] = useState<string | null>(null)
   const [reportVisited, setReportVisited] = useState(false)
   const profileRef = useRef<ProfileScreenHandle>(null)
-  const [pendingScreen, setPendingScreen] = useState<Screen | null>(null)
+  const recordRef = useRef<DailyRecordScreenHandle>(null)
+  const [pendingNav, setPendingNav] = useState<{ target: Screen; from: 'profile' | 'record' } | null>(null)
 
   const activeRecord = activeDate
     ? (records.find((r) => dayKey(r.date) === dayKey(activeDate)) ?? null)
@@ -59,7 +60,11 @@ export function AppShell({
 
   const goToTab = (s: Screen) => {
     if (screen === 'profile' && s !== 'profile' && profileRef.current?.isDirty()) {
-      setPendingScreen(s)
+      setPendingNav({ target: s, from: 'profile' })
+      return
+    }
+    if (screen === 'record' && recordView === 'input' && recordRef.current?.isDirty()) {
+      setPendingNav({ target: s, from: 'record' })
       return
     }
     if (s === 'record') setRecordView('list')
@@ -102,6 +107,7 @@ export function AppShell({
             />
           ) : (
             <DailyRecordScreen
+              ref={recordRef}
               key={activeDate ?? 'new'}
               date={activeDate ?? new Date().toISOString()}
               initialRecord={activeRecord}
@@ -123,26 +129,34 @@ export function AppShell({
         <DateChoiceSheet onSelect={startNewRecord} onClose={() => setShowDateChoice(false)} />
       )}
 
-      {pendingScreen && (
+      {pendingNav && (
         <LeaveConfirmSheet
-          canSave
-          message="基本情報の変更が保存されていません。移動する前に保存しますか？"
+          canSave={pendingNav.from === 'profile' ? true : (recordRef.current?.canSave() ?? false)}
+          message={
+            pendingNav.from === 'profile'
+              ? '基本情報の変更が保存されていません。移動する前に保存しますか？'
+              : '入力中の内容がまだ保存されていません。移動する前に保存しますか？'
+          }
+          cannotSaveHint={
+            pendingNav.from === 'record' ? '保存するには気分を1つ以上選んでください' : undefined
+          }
           onSaveAndLeave={() => {
-            profileRef.current?.save()
-            const target = pendingScreen
-            setPendingScreen(null)
+            if (pendingNav.from === 'profile') profileRef.current?.save()
+            else recordRef.current?.save()
+            const target = pendingNav.target
+            setPendingNav(null)
             if (target === 'record') setRecordView('list')
             if (target === 'report') setReportVisited(true)
             setScreen(target)
           }}
           onDiscardAndLeave={() => {
-            const target = pendingScreen
-            setPendingScreen(null)
+            const target = pendingNav.target
+            setPendingNav(null)
             if (target === 'record') setRecordView('list')
             if (target === 'report') setReportVisited(true)
             setScreen(target)
           }}
-          onCancel={() => setPendingScreen(null)}
+          onCancel={() => setPendingNav(null)}
         />
       )}
 
