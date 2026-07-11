@@ -149,9 +149,6 @@ export function PatientRecordsScreen({
           <UserRound className="size-5 text-primary" />
           {patient.nickname || '本人'}さんの記録
         </h1>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          メモ・希死念慮・自傷の記録は表示されません。
-        </p>
       </div>
 
       <div className="grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">

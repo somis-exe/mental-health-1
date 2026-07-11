@@ -458,6 +458,12 @@ export const DailyRecordScreen = forwardRef<
         )}
       </div>
 
+      {isGuardian && (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          （保護者から見て）本人の様子から感じた気分を選んでください。分かるタイミングだけでかまいません。
+        </p>
+      )}
+
       {/* Guardian: patient's same-day record for reference */}
       {isGuardian && <ReferencePanel record={referenceRecord} />}
 
@@ -522,9 +528,7 @@ export const DailyRecordScreen = forwardRef<
         icon={<HeartPulse className="size-4.5 text-primary" />}
       >
         <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
-          {isGuardian
-            ? '本人の様子から感じた気分を選んでください。分かるタイミングだけでかまいません。'
-            : '朝・昼・夜のうち、記録できるタイミングだけでかまいません。'}
+          朝・昼・夜のうち、記録できるタイミングだけでかまいません。
         </p>
         <div className="flex flex-col gap-4">
           <MoodPicker label="朝" value={moodMorning} onChange={setMoodMorning} />
