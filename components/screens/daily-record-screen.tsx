@@ -459,8 +459,8 @@ export const DailyRecordScreen = forwardRef<
       </div>
 
       {isGuardian && (
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          （保護者から見て）本人の様子から感じた気分を選んでください。分かるタイミングだけでかまいません。
+        <p className="text-xs font-bold leading-relaxed text-foreground">
+          （保護者から見て）本人の様子から感じた体調を記録してください。分かるタイミングだけでかまいません。
         </p>
       )}
 
@@ -524,7 +524,7 @@ export const DailyRecordScreen = forwardRef<
 
       {/* Mood */}
       <Section
-        title={isGuardian ? '本人の気分（保護者から見て）' : '今日の気分'}
+        title={isGuardian ? '本人の気分' : '今日の気分'}
         icon={<HeartPulse className="size-4.5 text-primary" />}
       >
         <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
