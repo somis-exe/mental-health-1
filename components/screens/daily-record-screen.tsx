@@ -461,7 +461,7 @@ export const DailyRecordScreen = forwardRef<
 
       {isGuardian && (
         <div>
-          <p className="text-base font-bold leading-relaxed text-foreground">
+          <p className="text-lg font-bold leading-relaxed text-foreground">
             保護者から見たお子様の体調記録を入力してください
           </p>
           <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
