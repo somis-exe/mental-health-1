@@ -1,11 +1,18 @@
 'use client'
 
-import { NotebookPen, BarChart3, UserCog } from 'lucide-react'
-import { type Screen } from '@/lib/health'
+import { NotebookPen, BarChart3, UserCog, UserRound } from 'lucide-react'
+import { type Screen, type AccountType } from '@/lib/health'
 import { cn } from '@/lib/utils'
 
-const ITEMS: { id: Screen; label: string; icon: typeof NotebookPen }[] = [
+const SELF_ITEMS: { id: Screen; label: string; icon: typeof NotebookPen }[] = [
   { id: 'record', label: '体調記録', icon: NotebookPen },
+  { id: 'report', label: 'レポート', icon: BarChart3 },
+  { id: 'profile', label: '基本情報', icon: UserCog },
+]
+
+const GUARDIAN_ITEMS: { id: Screen; label: string; icon: typeof NotebookPen }[] = [
+  { id: 'record', label: 'みまもり記録', icon: NotebookPen },
+  { id: 'patient', label: '本人の記録', icon: UserRound },
   { id: 'report', label: 'レポート', icon: BarChart3 },
   { id: 'profile', label: '基本情報', icon: UserCog },
 ]
@@ -13,10 +20,13 @@ const ITEMS: { id: Screen; label: string; icon: typeof NotebookPen }[] = [
 export function BottomNav({
   active,
   onChange,
+  mode = 'self',
 }: {
   active: Screen
   onChange: (s: Screen) => void
+  mode?: AccountType
 }) {
+  const ITEMS = mode === 'guardian' ? GUARDIAN_ITEMS : SELF_ITEMS
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-background/90 backdrop-blur-md">
       <div className="mx-auto flex max-w-md items-center justify-around px-4 pb-6 pt-2">

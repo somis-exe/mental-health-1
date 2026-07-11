@@ -1,9 +1,11 @@
 'use client'
 
 import { forwardRef, useImperativeHandle, useState } from 'react'
-import { Check, LogOut, UserRound } from 'lucide-react'
+import { Check, LogOut, UserRound, HeartHandshake } from 'lucide-react'
 import { Chip, FieldLabel, Section } from '@/components/ui-kit'
-import { CONCERNS, GENDERS, type Profile } from '@/lib/health'
+import { PatientLinkSettings, GuardianLinkSettings } from '@/components/link-settings'
+import { CONCERNS, GENDERS, type Profile, type AccountType } from '@/lib/health'
+import { type LinkedPatient } from '@/lib/links'
 import { cn } from '@/lib/utils'
 
 const YEARS = Array.from({ length: 90 }, (_, i) => String(new Date().getFullYear() - i))
@@ -51,12 +53,17 @@ export const ProfileScreen = forwardRef<
   ProfileScreenHandle,
   {
     profile: Profile
+    userId: string
     onSave: (p: Profile) => void
     onLogout: () => void
+    patient?: LinkedPatient | null
+    onRedeemCode?: (code: string) => Promise<void>
+    onUnlinkPatient?: () => Promise<void>
   }
->(function ProfileScreen({ profile, onSave, onLogout }, ref) {
+>(function ProfileScreen({ profile, userId, onSave, onLogout, patient, onRedeemCode, onUnlinkPatient }, ref) {
   const [draft, setDraft] = useState<Profile>(profile)
   const [saved, setSaved] = useState(false)
+  const isGuardian = draft.accountType === 'guardian'
 
   const update = <K extends keyof Profile>(key: K, val: Profile[K]) => {
     setDraft((p) => ({ ...p, [key]: val }))
@@ -99,6 +106,34 @@ export const ProfileScreen = forwardRef<
       <Section title="プロフィール">
         <div className="flex flex-col gap-6">
           <div>
+            <FieldLabel>アカウントの種類</FieldLabel>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  ['self', '本人', UserRound],
+                  ['guardian', '保護者', HeartHandshake],
+                ] as [AccountType, string, typeof UserRound][]
+              ).map(([type, label, Icon]) => (
+                <button
+                  key={type}
+                  type="button"
+                  onClick={() => update('accountType', type)}
+                  aria-pressed={draft.accountType === type}
+                  className={cn(
+                    'flex items-center justify-center gap-2 rounded-2xl border px-3 py-3.5 text-sm font-medium transition-all active:scale-[0.98]',
+                    draft.accountType === type
+                      ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
+                      : 'border-border bg-background text-muted-foreground hover:border-primary/40',
+                  )}
+                >
+                  <Icon className="size-4.5" />
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
             <FieldLabel>ニックネーム</FieldLabel>
             <input
               value={draft.nickname}
@@ -108,6 +143,8 @@ export const ProfileScreen = forwardRef<
             />
           </div>
 
+          {!isGuardian && (
+          <>
           <div>
             <FieldLabel>生年月日</FieldLabel>
             <div className="flex gap-2">
@@ -185,9 +222,23 @@ export const ProfileScreen = forwardRef<
               </div>
             </div>
           )}
+          </>
+          )}
         </div>
       </Section>
 
+      {isGuardian ? (
+        <GuardianLinkSettings
+          patient={patient ?? null}
+          onRedeemCode={onRedeemCode ?? (async () => {})}
+          onUnlinkPatient={onUnlinkPatient ?? (async () => {})}
+        />
+      ) : (
+        <PatientLinkSettings userId={userId} />
+      )}
+
+      {!isGuardian && (
+      <>
       <Section title="気になっていること">
         <div className="flex flex-wrap gap-2">
           {CONCERNS.map((c) => (
@@ -207,6 +258,8 @@ export const ProfileScreen = forwardRef<
           className="w-full resize-none rounded-2xl border border-border bg-background px-4 py-3.5 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
         />
       </Section>
+      </>
+      )}
 
       <button
         type="button"

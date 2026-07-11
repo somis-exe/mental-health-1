@@ -9,31 +9,54 @@ import { DailyRecordScreen, type DailyRecordScreenHandle } from '@/components/sc
 import { RecordListScreen } from '@/components/screens/record-list-screen'
 import { ReportScreen } from '@/components/screens/report-screen'
 import { ProfileScreen, type ProfileScreenHandle } from '@/components/screens/profile-screen'
+import { PatientRecordsScreen } from '@/components/screens/patient-records-screen'
+import { CombinedReportScreen } from '@/components/screens/combined-report-screen'
 import { type Screen, type Profile, type DailyRecord, dayKey, periodTrackingEnabled } from '@/lib/health'
+import { type LinkedPatient } from '@/lib/links'
 
-const TITLES: Record<Screen, string> = {
+const SELF_TITLES: Record<Screen, string> = {
   record: '体調記録',
+  patient: '本人の記録',
   report: 'レポート',
+  profile: '基本情報',
+}
+
+const GUARDIAN_TITLES: Record<Screen, string> = {
+  record: 'みまもり記録',
+  patient: '本人の記録',
+  report: '総合レポート',
   profile: '基本情報',
 }
 
 export function AppShell({
   profile,
+  userId,
   onUpdateProfile,
   records,
   onSaveRecord,
   recordError,
   onDismissRecordError,
   onLogout,
+  patient = null,
+  patientRecords = [],
+  onRedeemCode,
+  onUnlinkPatient,
 }: {
   profile: Profile
+  userId: string
   onUpdateProfile: (p: Profile) => void
   records: DailyRecord[]
   onSaveRecord: (r: DailyRecord) => void
   recordError?: string | null
   onDismissRecordError?: () => void
   onLogout: () => void
+  patient?: LinkedPatient | null
+  patientRecords?: DailyRecord[]
+  onRedeemCode?: (code: string) => Promise<void>
+  onUnlinkPatient?: () => Promise<void>
 }) {
+  const isGuardian = profile.accountType === 'guardian'
+  const TITLES = isGuardian ? GUARDIAN_TITLES : SELF_TITLES
   const [screen, setScreen] = useState<Screen>('record')
   const [recordView, setRecordView] = useState<'list' | 'input'>('list')
   const [showDateChoice, setShowDateChoice] = useState(false)
@@ -73,7 +96,16 @@ export function AppShell({
   }
 
   const headerTitle =
-    screen === 'record' && recordView === 'input' ? '体調記録の入力' : TITLES[screen]
+    screen === 'record' && recordView === 'input'
+      ? isGuardian
+        ? 'みまもり記録の入力'
+        : '体調記録の入力'
+      : TITLES[screen]
+
+  const referenceRecord =
+    isGuardian && activeDate
+      ? (patientRecords.find((r) => dayKey(r.date) === dayKey(activeDate)) ?? null)
+      : null
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-md flex-col bg-background">
@@ -104,6 +136,7 @@ export function AppShell({
               records={records}
               onNew={() => setShowDateChoice(true)}
               onEdit={startEditRecord}
+              mode={isGuardian ? 'guardian' : 'self'}
             />
           ) : (
             <DailyRecordScreen
@@ -111,18 +144,40 @@ export function AppShell({
               key={activeDate ?? 'new'}
               date={activeDate ?? new Date().toISOString()}
               initialRecord={activeRecord}
-              showPeriod={periodTrackingEnabled(profile)}
+              showPeriod={!isGuardian && periodTrackingEnabled(profile)}
+              mode={isGuardian ? 'guardian' : 'self'}
+              referenceRecord={referenceRecord}
               onSave={onSaveRecord}
               onBack={() => setRecordView('list')}
             />
           ))}
-        {(screen === 'report' || reportVisited) && (
-          <div className={screen === 'report' ? '' : 'hidden'}>
-            <ReportScreen profile={profile} records={records} />
-          </div>
+        {screen === 'patient' && isGuardian && (
+          <PatientRecordsScreen patient={patient} records={patientRecords} />
         )}
+        {isGuardian
+          ? screen === 'report' && (
+              <CombinedReportScreen
+                patient={patient}
+                patientRecords={patientRecords}
+                guardianRecords={records}
+              />
+            )
+          : (screen === 'report' || reportVisited) && (
+              <div className={screen === 'report' ? '' : 'hidden'}>
+                <ReportScreen profile={profile} records={records} />
+              </div>
+            )}
         {screen === 'profile' && (
-          <ProfileScreen ref={profileRef} profile={profile} onSave={onUpdateProfile} onLogout={onLogout} />
+          <ProfileScreen
+            ref={profileRef}
+            profile={profile}
+            userId={userId}
+            onSave={onUpdateProfile}
+            onLogout={onLogout}
+            patient={patient}
+            onRedeemCode={onRedeemCode}
+            onUnlinkPatient={onUnlinkPatient}
+          />
         )}
       </main>
 
@@ -161,7 +216,7 @@ export function AppShell({
         />
       )}
 
-      <BottomNav active={screen} onChange={goToTab} />
+      <BottomNav active={screen} onChange={goToTab} mode={profile.accountType} />
     </div>
   )
 }

@@ -15,6 +15,13 @@ import {
   type Profile,
   type DailyRecord,
 } from '@/lib/health'
+import {
+  fetchLinkedPatient,
+  fetchPatientRecords,
+  redeemLinkCode,
+  unlinkPatient,
+  type LinkedPatient,
+} from '@/lib/links'
 import { createClient } from '@/lib/supabase/client'
 
 type Stage = 'checking' | 'auth' | 'onboarding' | 'app'
@@ -26,6 +33,20 @@ export default function Page() {
   const [records, setRecords] = useState<DailyRecord[]>([])
   const [userId, setUserId] = useState<string | null>(null)
   const [recordError, setRecordError] = useState<string | null>(null)
+  const [patient, setPatient] = useState<LinkedPatient | null>(null)
+  const [patientRecords, setPatientRecords] = useState<DailyRecord[]>([])
+
+  const loadGuardianData = useCallback(async () => {
+    try {
+      const linked = await fetchLinkedPatient()
+      setPatient(linked)
+      setPatientRecords(linked ? await fetchPatientRecords() : [])
+    } catch (e) {
+      console.error('Failed to load guardian link data', e)
+      setPatient(null)
+      setPatientRecords([])
+    }
+  }, [])
 
   const resolveStage = useCallback(
     async (uid: string) => {
@@ -36,13 +57,15 @@ export default function Page() {
       ])
       setRecords((recordRows ?? []).map(recordFromRow))
       if (profileRow) {
-        setProfile(profileFromRow(profileRow))
+        const p = profileFromRow(profileRow)
+        setProfile(p)
+        if (p.accountType === 'guardian') await loadGuardianData()
         setStage('app')
       } else {
         setStage('onboarding')
       }
     },
-    [supabase],
+    [supabase, loadGuardianData],
   )
 
   const handleSaveRecord = async (r: DailyRecord) => {
@@ -113,16 +136,23 @@ export default function Page() {
           onComplete={async (p) => {
             await supabase.from('profiles').insert(profileToRow(p, userId))
             setProfile(p)
+          }}
+          onEnterApp={async () => {
+            // 保護者ならオンボーディング中のコード連携を反映（本人アカウントでは空振りするだけ）
+            await loadGuardianData()
             setStage('app')
           }}
         />
       )}
-      {stage === 'app' && (
+      {stage === 'app' && userId && (
         <AppShell
           profile={profile}
+          userId={userId}
           onUpdateProfile={async (p) => {
-            if (userId) await supabase.from('profiles').update(profileToRow(p, userId)).eq('id', userId)
+            const wasGuardian = profile.accountType === 'guardian'
+            await supabase.from('profiles').update(profileToRow(p, userId)).eq('id', userId)
             setProfile(p)
+            if (p.accountType === 'guardian' && !wasGuardian) await loadGuardianData()
           }}
           records={records}
           onSaveRecord={handleSaveRecord}
@@ -130,6 +160,17 @@ export default function Page() {
           onDismissRecordError={() => setRecordError(null)}
           onLogout={async () => {
             await supabase.auth.signOut()
+          }}
+          patient={patient}
+          patientRecords={patientRecords}
+          onRedeemCode={async (code) => {
+            await redeemLinkCode(code)
+            await loadGuardianData()
+          }}
+          onUnlinkPatient={async () => {
+            await unlinkPatient(userId)
+            setPatient(null)
+            setPatientRecords([])
           }}
         />
       )}

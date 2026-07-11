@@ -1,9 +1,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, Loader2, HeartHandshake, UserRound } from 'lucide-react'
 import { Chip, FieldLabel } from '@/components/ui-kit'
-import { CONCERNS, GENDERS, DEFAULT_PROFILE, type Profile } from '@/lib/health'
+import { CONCERNS, GENDERS, DEFAULT_PROFILE, type Profile, type AccountType } from '@/lib/health'
+import { redeemLinkCode } from '@/lib/links'
 import { cn } from '@/lib/utils'
 
 const YEARS = Array.from({ length: 90 }, (_, i) => String(new Date().getFullYear() - i))
@@ -45,8 +46,20 @@ function DateSelect({
   )
 }
 
-export function OnboardingScreen({ onComplete }: { onComplete: (p: Profile) => void }) {
+export function OnboardingScreen({
+  onComplete,
+  onEnterApp,
+}: {
+  onComplete: (p: Profile) => Promise<void>
+  onEnterApp: () => void
+}) {
   const [profile, setProfile] = useState<Profile>(DEFAULT_PROFILE)
+  const [linkCode, setLinkCode] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [linkError, setLinkError] = useState<string | null>(null)
+  const [profileCreated, setProfileCreated] = useState(false)
+
+  const isGuardian = profile.accountType === 'guardian'
 
   const update = <K extends keyof Profile>(key: K, val: Profile[K]) =>
     setProfile((p) => ({ ...p, [key]: val }))
@@ -58,6 +71,29 @@ export function OnboardingScreen({ onComplete }: { onComplete: (p: Profile) => v
         ? p.concerns.filter((x) => x !== c)
         : [...p.concerns, c],
     }))
+
+  const handleSubmit = async () => {
+    setBusy(true)
+    setLinkError(null)
+    try {
+      if (!profileCreated) {
+        await onComplete(profile)
+        setProfileCreated(true)
+      }
+      if (isGuardian && linkCode.trim()) {
+        try {
+          await redeemLinkCode(linkCode.trim())
+        } catch (e) {
+          setLinkError(e instanceof Error ? e.message : '連携に失敗しました。')
+          setBusy(false)
+          return
+        }
+      }
+      onEnterApp()
+    } finally {
+      setBusy(false)
+    }
+  }
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -78,6 +114,39 @@ export function OnboardingScreen({ onComplete }: { onComplete: (p: Profile) => v
 
       <div className="flex flex-1 flex-col gap-7 px-6 pb-32 pt-6">
         <div>
+          <FieldLabel>アカウントの種類</FieldLabel>
+          <div className="grid grid-cols-2 gap-2">
+            {(
+              [
+                ['self', '本人として記録する', UserRound],
+                ['guardian', '保護者として見守る', HeartHandshake],
+              ] as [AccountType, string, typeof UserRound][]
+            ).map(([type, label, Icon]) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => update('accountType', type)}
+                aria-pressed={profile.accountType === type}
+                className={cn(
+                  'flex flex-col items-center gap-2 rounded-2xl border px-3 py-4 text-sm font-medium transition-all active:scale-[0.98]',
+                  profile.accountType === type
+                    ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
+                    : 'border-border bg-card text-muted-foreground hover:border-primary/40',
+                )}
+              >
+                <Icon className="size-6" />
+                {label}
+              </button>
+            ))}
+          </div>
+          {isGuardian && (
+            <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
+              保護者向けアカウントでは、連携した本人の体調記録（メモ・希死念慮・自傷の記録を除く）を見たり、保護者から見た様子を記録したりできます。
+            </p>
+          )}
+        </div>
+
+        <div>
           <FieldLabel>ニックネーム</FieldLabel>
           <input
             value={profile.nickname}
@@ -87,6 +156,28 @@ export function OnboardingScreen({ onComplete }: { onComplete: (p: Profile) => v
           />
         </div>
 
+        {isGuardian && (
+          <div>
+            <FieldLabel>連携コード（あとからでも設定できます）</FieldLabel>
+            <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+              本人のアカウントの「基本情報」で発行した連携コードを入力してください。
+            </p>
+            <input
+              value={linkCode}
+              onChange={(e) => setLinkCode(e.target.value.toUpperCase())}
+              placeholder="例：ABCD2345"
+              maxLength={8}
+              autoCapitalize="characters"
+              autoCorrect="off"
+              spellCheck={false}
+              className="w-full rounded-2xl border border-border bg-card px-4 py-3.5 text-center font-mono text-lg font-bold tracking-[0.2em] text-foreground outline-none transition-all placeholder:text-sm placeholder:font-sans placeholder:font-normal placeholder:tracking-normal placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
+            />
+            {linkError && <p className="mt-2 text-sm text-destructive">{linkError}</p>}
+          </div>
+        )}
+
+        {!isGuardian && (
+          <>
         <div>
           <FieldLabel>生年月日</FieldLabel>
           <div className="flex gap-2">
@@ -189,6 +280,8 @@ export function OnboardingScreen({ onComplete }: { onComplete: (p: Profile) => v
             className="w-full resize-none rounded-2xl border border-border bg-card px-4 py-3.5 text-sm leading-relaxed text-foreground outline-none transition-all placeholder:text-muted-foreground/60 focus:border-primary focus:ring-2 focus:ring-primary/20"
           />
         </div>
+          </>
+        )}
       </div>
 
       {/* Sticky footer */}
@@ -196,11 +289,26 @@ export function OnboardingScreen({ onComplete }: { onComplete: (p: Profile) => v
         <div className="mx-auto max-w-md">
           <button
             type="button"
-            onClick={() => onComplete(profile)}
-            className="w-full rounded-2xl bg-primary py-4 text-base font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.99]"
+            onClick={handleSubmit}
+            disabled={busy}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-primary py-4 text-base font-bold text-primary-foreground shadow-sm transition-all hover:bg-primary/90 active:scale-[0.99] disabled:opacity-60"
           >
+            {busy && <Loader2 className="size-5 animate-spin" />}
             この内容で登録して始める
           </button>
+          {linkError && profileCreated && (
+            <button
+              type="button"
+              onClick={() => {
+                setLinkCode('')
+                setLinkError(null)
+                onEnterApp()
+              }}
+              className="mt-2 w-full rounded-2xl py-2.5 text-sm font-bold text-muted-foreground transition-all hover:bg-muted active:scale-[0.99]"
+            >
+              連携せずに始める（あとから設定できます）
+            </button>
+          )}
         </div>
       </div>
     </div>

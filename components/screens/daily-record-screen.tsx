@@ -32,6 +32,9 @@ import {
   deriveSleepTimes,
   snapToQuarterHour,
   TIME_OPTIONS_15MIN,
+  dayMoodEntries,
+  moodMeta,
+  MOOD_SLOTS,
   type DailyRecord,
   type Mood,
 } from '@/lib/health'
@@ -92,6 +95,77 @@ function Toggle({
 }
 
 
+/** 保護者の入力画面に出す、本人の同日の記録（共有ビュー経由・メモ等除外済み）の要約。 */
+function ReferencePanel({ record }: { record: DailyRecord | null }) {
+  const [open, setOpen] = useState(true)
+  const moods = record ? dayMoodEntries(record) : []
+  const slotLabel = (slot: string) => MOOD_SLOTS.find((s) => s.value === slot)?.label ?? slot
+  const items: string[] = []
+  if (record) {
+    if (record.sleepHours !== null) items.push(`睡眠 ${record.sleepHours}時間`)
+    if (record.appetite) items.push(`食欲: ${record.appetite}`)
+    if (record.exercise) items.push(`運動: ${record.exercise}`)
+    if (record.bath !== null) items.push(`入浴: ${record.bath ? 'した' : 'していない'}`)
+    if (record.medication !== null) items.push(`服薬: ${record.medication ? 'あり' : 'なし'}`)
+  }
+  return (
+    <div className="rounded-3xl border border-border bg-card p-3">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left"
+      >
+        <ListChecks className="size-4.5 shrink-0 text-primary" />
+        <span className="flex-1 text-sm font-bold text-foreground">本人のこの日の記録</span>
+        <ChevronDown
+          className={cn('size-5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
+        />
+      </button>
+      {open && (
+        <div className="mt-2 px-2 pb-1">
+          {!record ? (
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              この日の本人の記録はまだありません。
+            </p>
+          ) : (
+            <>
+              {moods.length > 0 && (
+                <div className="mb-2 flex flex-wrap items-center gap-3 text-xs font-medium text-muted-foreground">
+                  {moods.map(({ slot, value }) => (
+                    <span key={slot} className="flex items-center gap-1">
+                      {slotLabel(slot)}
+                      <span className="text-base leading-none">{moodMeta(value).emoji}</span>
+                    </span>
+                  ))}
+                </div>
+              )}
+              {record.symptoms.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {record.symptoms.map((s) => (
+                    <span
+                      key={s}
+                      className="rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+                    >
+                      {s}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {items.length > 0 && (
+                <p className="text-xs leading-relaxed text-muted-foreground">{items.join(' ／ ')}</p>
+              )}
+              {moods.length === 0 && record.symptoms.length === 0 && items.length === 0 && (
+                <p className="text-xs leading-relaxed text-muted-foreground">記録された項目はありません。</p>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export type DailyRecordScreenHandle = {
   isDirty: () => boolean
   canSave: () => boolean
@@ -104,10 +178,16 @@ export const DailyRecordScreen = forwardRef<
     date: string
     initialRecord?: DailyRecord | null
     showPeriod?: boolean
+    mode?: 'self' | 'guardian'
+    referenceRecord?: DailyRecord | null
     onSave: (r: DailyRecord) => void
     onBack?: () => void
   }
->(function DailyRecordScreen({ date, initialRecord, showPeriod = false, onSave, onBack }, ref) {
+>(function DailyRecordScreen(
+  { date, initialRecord, showPeriod = false, mode = 'self', referenceRecord = null, onSave, onBack },
+  ref,
+) {
+  const isGuardian = mode === 'guardian'
   const isEditing = Boolean(initialRecord)
   const dateLabel = useMemo(() => formatFullDate(date), [date])
   const [moodMorning, setMoodMorning] = useState<Mood | null>(initialRecord?.moodMorning ?? null)
@@ -378,7 +458,11 @@ export const DailyRecordScreen = forwardRef<
         )}
       </div>
 
+      {/* Guardian: patient's same-day record for reference */}
+      {isGuardian && <ReferencePanel record={referenceRecord} />}
+
       {/* AI diary entry */}
+      {!isGuardian && (
       <div className="rounded-3xl border border-primary/25 bg-primary/[0.05] p-3">
         <button
           type="button"
@@ -430,11 +514,17 @@ export const DailyRecordScreen = forwardRef<
           </div>
         )}
       </div>
+      )}
 
       {/* Mood */}
-      <Section title="今日の気分" icon={<HeartPulse className="size-4.5 text-primary" />}>
+      <Section
+        title={isGuardian ? '本人の気分（保護者から見て）' : '今日の気分'}
+        icon={<HeartPulse className="size-4.5 text-primary" />}
+      >
         <p className="mb-4 text-xs leading-relaxed text-muted-foreground">
-          朝・昼・夜のうち、記録できるタイミングだけでかまいません。
+          {isGuardian
+            ? '本人の様子から感じた気分を選んでください。分かるタイミングだけでかまいません。'
+            : '朝・昼・夜のうち、記録できるタイミングだけでかまいません。'}
         </p>
         <div className="flex flex-col gap-4">
           <MoodPicker label="朝" value={moodMorning} onChange={setMoodMorning} />
@@ -452,6 +542,7 @@ export const DailyRecordScreen = forwardRef<
             </Chip>
           ))}
         </div>
+        {!isGuardian && (
         <div className="mt-5 flex flex-col gap-4 border-t border-border pt-4">
           <p className="text-xs leading-relaxed text-muted-foreground">
             つらい気持ちがあったときの記録にお使いください。無理に入力する必要はありません。
@@ -467,6 +558,7 @@ export const DailyRecordScreen = forwardRef<
             <Toggle value={selfHarm} onChange={setSelfHarm} labels={['なし', 'あり']} />
           </div>
         </div>
+        )}
       </Section>
 
       {/* Sleep */}
@@ -589,7 +681,7 @@ export const DailyRecordScreen = forwardRef<
       )}
 
       {/* Feedback */}
-      {feedback && (
+      {feedback && !isGuardian && (
         <div className="flex flex-col gap-4 pt-2">
           <div className="rounded-3xl border border-primary/25 bg-primary/[0.07] p-5">
             <div className="mb-2 flex items-center gap-2">

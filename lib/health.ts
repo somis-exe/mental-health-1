@@ -1,4 +1,6 @@
-export type Screen = 'record' | 'report' | 'profile'
+export type Screen = 'record' | 'patient' | 'report' | 'profile'
+
+export type AccountType = 'self' | 'guardian'
 
 export type Mood = 1 | 2 | 3 | 4 | 5
 
@@ -61,6 +63,7 @@ export type Profile = {
   concerns: string[]
   freeNote: string
   trackPeriod: boolean
+  accountType: AccountType
 }
 
 /** Period tracking is offered only for these genders, and can be turned off in profile settings. */
@@ -173,6 +176,7 @@ export const DEFAULT_PROFILE: Profile = {
   concerns: [],
   freeNote: '',
   trackPeriod: true,
+  accountType: 'self',
 }
 
 export function formatToday(): string {
@@ -244,6 +248,7 @@ export type ProfileRow = {
   concerns: string[]
   free_note: string
   track_period: boolean
+  account_type: string
 }
 
 export function profileFromRow(row: ProfileRow): Profile {
@@ -256,6 +261,7 @@ export function profileFromRow(row: ProfileRow): Profile {
     concerns: row.concerns,
     freeNote: row.free_note,
     trackPeriod: row.track_period ?? true,
+    accountType: row.account_type === 'guardian' ? 'guardian' : 'self',
   }
 }
 
@@ -270,6 +276,7 @@ export function profileToRow(profile: Profile, userId: string): ProfileRow {
     concerns: profile.concerns,
     free_note: profile.freeNote,
     track_period: profile.trackPeriod,
+    account_type: profile.accountType,
   }
 }
 
@@ -342,6 +349,17 @@ export function recordToRow(record: DailyRecord, userId: string) {
     period: record.period,
     memo: record.memo,
   }
+}
+
+/** Row shape of the shared_daily_records view — the patient's records as visible to a linked guardian. */
+export type SharedDailyRecordRow = Omit<DailyRecordRow, 'memo' | 'suicidal_ideation' | 'self_harm'>
+
+/**
+ * A guardian-visible record, normalized to DailyRecord so chart/report utilities work unchanged.
+ * memo and safety fields are excluded at the SQL view level and filled with empty values here.
+ */
+export function sharedRecordFromRow(row: SharedDailyRecordRow): DailyRecord {
+  return recordFromRow({ ...row, memo: '', suicidal_ideation: null, self_harm: null })
 }
 
 /** Rule-based (no external API) talking points for a doctor visit, derived from the records. */

@@ -5,7 +5,7 @@ import { averageMood, dayMoodEntries, formatRecordDate, moodMeta, type DailyReco
 
 const SLOT_LABELS = { morning: '朝', noon: '昼', night: '夜' } as const
 
-function RecordCard({ record, onEdit }: { record: DailyRecord; onEdit: () => void }) {
+export function RecordCard({ record, onEdit }: { record: DailyRecord; onEdit?: () => void }) {
   const rep = averageMood(record)
   const meta = moodMeta(rep ?? 3)
   const entries = dayMoodEntries(record)
@@ -28,14 +28,16 @@ function RecordCard({ record, onEdit }: { record: DailyRecord; onEdit: () => voi
               <span className="text-xs font-semibold" style={{ color: meta.color }}>
                 {meta.label}
               </span>
-              <button
-                type="button"
-                onClick={onEdit}
-                aria-label="この記録を編集"
-                className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              >
-                <Pencil className="size-3.5" />
-              </button>
+              {onEdit && (
+                <button
+                  type="button"
+                  onClick={onEdit}
+                  aria-label="この記録を編集"
+                  className="flex size-7 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                >
+                  <Pencil className="size-3.5" />
+                </button>
+              )}
             </span>
           </div>
           {entries.length > 0 && (
@@ -97,11 +99,14 @@ export function RecordListScreen({
   records,
   onNew,
   onEdit,
+  mode = 'self',
 }: {
   records: DailyRecord[]
   onNew: () => void
   onEdit: (record: DailyRecord) => void
+  mode?: 'self' | 'guardian'
 }) {
+  const isGuardian = mode === 'guardian'
   const sorted = [...records].sort(
     (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
   )
@@ -109,9 +114,13 @@ export function RecordListScreen({
   return (
     <div className="flex flex-col gap-4 px-5 pb-8 pt-4">
       <div>
-        <h1 className="text-xl font-extrabold text-foreground">体調記録の一覧</h1>
+        <h1 className="text-xl font-extrabold text-foreground">
+          {isGuardian ? 'みまもり記録の一覧' : '体調記録の一覧'}
+        </h1>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-          これまでの記録を振り返れます。右下のボタンから今日の記録を追加しましょう。
+          {isGuardian
+            ? '保護者から見た本人の様子の記録です。右下のボタンから今日の記録を追加しましょう。'
+            : 'これまでの記録を振り返れます。右下のボタンから今日の記録を追加しましょう。'}
         </p>
       </div>
 
