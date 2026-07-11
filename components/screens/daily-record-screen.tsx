@@ -28,6 +28,7 @@ import {
   EXERCISE,
   SLEEP_ONSET,
   formatFullDate,
+  formatRecordDate,
   sleepDurationHours,
   deriveSleepTimes,
   snapToQuarterHour,
@@ -465,7 +466,7 @@ export const DailyRecordScreen = forwardRef<
       )}
 
       {/* Guardian: patient's same-day record for reference */}
-      {isGuardian && <ReferencePanel record={referenceRecord} dateLabel={dateLabel} />}
+      {isGuardian && <ReferencePanel record={referenceRecord} dateLabel={formatRecordDate(date)} />}
 
       {/* AI diary entry */}
       {!isGuardian && (
