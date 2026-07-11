@@ -21,6 +21,7 @@ function buildPrompt(records: DailyRecord[], rangeLabel?: string): string {
       r.symptoms.length ? `症状: ${r.symptoms.join('、')}` : null,
       r.suicidalIdeation ? '希死念慮あり' : null,
       r.selfHarm ? '自傷行為あり' : null,
+      r.period ? '生理あり' : null,
       r.memo ? `メモ: ${r.memo}` : null,
     ].filter(Boolean)
     return `- ${parts.join(' / ')}`

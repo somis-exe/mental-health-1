@@ -8,6 +8,7 @@ import {
   Activity,
   Bath,
   Pill,
+  Droplets,
   StickyNote,
   HeartPulse,
   Stethoscope,
@@ -102,10 +103,11 @@ export const DailyRecordScreen = forwardRef<
   {
     date: string
     initialRecord?: DailyRecord | null
+    showPeriod?: boolean
     onSave: (r: DailyRecord) => void
     onBack?: () => void
   }
->(function DailyRecordScreen({ date, initialRecord, onSave, onBack }, ref) {
+>(function DailyRecordScreen({ date, initialRecord, showPeriod = false, onSave, onBack }, ref) {
   const isEditing = Boolean(initialRecord)
   const dateLabel = useMemo(() => formatFullDate(date), [date])
   const [moodMorning, setMoodMorning] = useState<Mood | null>(initialRecord?.moodMorning ?? null)
@@ -134,6 +136,7 @@ export const DailyRecordScreen = forwardRef<
     initialRecord?.suicidalIdeation ?? null,
   )
   const [selfHarm, setSelfHarm] = useState<boolean | null>(initialRecord?.selfHarm ?? null)
+  const [period, setPeriod] = useState<boolean | null>(initialRecord?.period ?? null)
   const [memo, setMemo] = useState(initialRecord?.memo ?? '')
   const [saved, setSaved] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
@@ -153,6 +156,7 @@ export const DailyRecordScreen = forwardRef<
     medication: boolean | null
     suicidalIdeation: boolean | null
     selfHarm: boolean | null
+    period: boolean | null
     memo: string
   }) => JSON.stringify(v)
 
@@ -172,6 +176,7 @@ export const DailyRecordScreen = forwardRef<
       medication: initialRecord?.medication ?? null,
       suicidalIdeation: initialRecord?.suicidalIdeation ?? null,
       selfHarm: initialRecord?.selfHarm ?? null,
+      period: initialRecord?.period ?? null,
       memo: initialRecord?.memo ?? '',
     }),
   )
@@ -197,6 +202,7 @@ export const DailyRecordScreen = forwardRef<
       medication,
       suicidalIdeation,
       selfHarm,
+      period,
       memo,
     }) !== lastSavedSnapshot || aiDiaryText.trim() !== ''
 
@@ -303,6 +309,7 @@ export const DailyRecordScreen = forwardRef<
         medication,
         suicidalIdeation,
         selfHarm,
+        period,
         memo,
       }),
     )
@@ -324,6 +331,7 @@ export const DailyRecordScreen = forwardRef<
       medication,
       suicidalIdeation,
       selfHarm,
+      period,
       memo,
     })
   }
@@ -547,6 +555,11 @@ export const DailyRecordScreen = forwardRef<
         <Section title="服薬" icon={<Pill className="size-4.5 text-primary" />}>
           <Toggle value={medication} onChange={setMedication} labels={['なし', 'あり']} />
         </Section>
+        {showPeriod && (
+          <Section title="生理" icon={<Droplets className="size-4.5 text-primary" />}>
+            <Toggle value={period} onChange={setPeriod} labels={['なし', 'あり']} />
+          </Section>
+        )}
       </div>
 
       {/* Memo */}

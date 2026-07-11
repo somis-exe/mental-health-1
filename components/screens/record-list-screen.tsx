@@ -1,6 +1,6 @@
 'use client'
 
-import { Plus, Moon, NotebookPen, Pill, Pencil } from 'lucide-react'
+import { Plus, Moon, NotebookPen, Pill, Pencil, Droplets } from 'lucide-react'
 import { averageMood, dayMoodEntries, formatRecordDate, moodMeta, type DailyRecord } from '@/lib/health'
 
 const SLOT_LABELS = { morning: '朝', noon: '昼', night: '夜' } as const
@@ -59,6 +59,12 @@ function RecordCard({ record, onEdit }: { record: DailyRecord; onEdit: () => voi
               <span className="flex items-center gap-1">
                 <Pill className="size-3.5" />
                 服薬あり
+              </span>
+            )}
+            {record.period && (
+              <span className="flex items-center gap-1">
+                <Droplets className="size-3.5" />
+                生理
               </span>
             )}
           </div>

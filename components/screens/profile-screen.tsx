@@ -153,6 +153,38 @@ export const ProfileScreen = forwardRef<
               ))}
             </div>
           </div>
+
+          {(draft.gender === '女性' || draft.gender === 'その他') && (
+            <div>
+              <FieldLabel>生理の記録</FieldLabel>
+              <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+                オンにすると、体調記録の入力画面に生理の有無の項目が表示されます。
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {(
+                  [
+                    [true, '記録する'],
+                    [false, '記録しない'],
+                  ] as const
+                ).map(([v, label]) => (
+                  <button
+                    key={label}
+                    type="button"
+                    onClick={() => update('trackPeriod', v)}
+                    aria-pressed={draft.trackPeriod === v}
+                    className={cn(
+                      'rounded-2xl border px-3 py-3.5 text-sm font-medium transition-all active:scale-[0.98]',
+                      draft.trackPeriod === v
+                        ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
+                        : 'border-border bg-background text-muted-foreground hover:border-primary/40',
+                    )}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </Section>
 

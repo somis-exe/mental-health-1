@@ -60,6 +60,12 @@ export type Profile = {
   gender: string
   concerns: string[]
   freeNote: string
+  trackPeriod: boolean
+}
+
+/** Period tracking is offered only for these genders, and can be turned off in profile settings. */
+export function periodTrackingEnabled(profile: Profile): boolean {
+  return (profile.gender === '女性' || profile.gender === 'その他') && profile.trackPeriod
 }
 
 export type DailyRecord = {
@@ -80,6 +86,7 @@ export type DailyRecord = {
   medication: boolean | null
   suicidalIdeation: boolean | null
   selfHarm: boolean | null
+  period: boolean | null
   memo: string
 }
 
@@ -163,6 +170,7 @@ export const DEFAULT_PROFILE: Profile = {
   gender: '',
   concerns: [],
   freeNote: '',
+  trackPeriod: true,
 }
 
 export function formatToday(): string {
@@ -233,6 +241,7 @@ export type ProfileRow = {
   gender: string
   concerns: string[]
   free_note: string
+  track_period: boolean
 }
 
 export function profileFromRow(row: ProfileRow): Profile {
@@ -244,6 +253,7 @@ export function profileFromRow(row: ProfileRow): Profile {
     gender: row.gender,
     concerns: row.concerns,
     freeNote: row.free_note,
+    trackPeriod: row.track_period ?? true,
   }
 }
 
@@ -257,6 +267,7 @@ export function profileToRow(profile: Profile, userId: string): ProfileRow {
     gender: profile.gender,
     concerns: profile.concerns,
     free_note: profile.freeNote,
+    track_period: profile.trackPeriod,
   }
 }
 
@@ -279,6 +290,7 @@ export type DailyRecordRow = {
   medication: boolean | null
   suicidal_ideation: boolean | null
   self_harm: boolean | null
+  period: boolean | null
   memo: string
 }
 
@@ -301,6 +313,7 @@ export function recordFromRow(row: DailyRecordRow): DailyRecord {
     medication: row.medication,
     suicidalIdeation: row.suicidal_ideation,
     selfHarm: row.self_harm,
+    period: row.period,
     memo: row.memo,
   }
 }
@@ -324,6 +337,7 @@ export function recordToRow(record: DailyRecord, userId: string) {
     medication: record.medication,
     suicidal_ideation: record.suicidalIdeation,
     self_harm: record.selfHarm,
+    period: record.period,
     memo: record.memo,
   }
 }
@@ -377,6 +391,11 @@ export function generateTalkingPoints(records: DailyRecord[]): string[] {
   const lowAppetiteCount = sorted.filter((r) => r.appetite === APPETITE[2]).length
   if (lowAppetiteCount >= 2) {
     points.push(`食欲が落ちている日が${lowAppetiteCount}日ありました。`)
+  }
+
+  const periodDays = sorted.filter((r) => r.period === true).length
+  if (periodDays > 0) {
+    points.push(`この期間、生理があった日が${periodDays}日ありました。`)
   }
 
   // Safety-critical: always surface first, ahead of other points, when present.

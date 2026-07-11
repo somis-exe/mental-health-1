@@ -136,6 +136,38 @@ export function OnboardingScreen({ onComplete }: { onComplete: (p: Profile) => v
           </div>
         </div>
 
+        {(profile.gender === '女性' || profile.gender === 'その他') && (
+          <div>
+            <FieldLabel>生理の記録</FieldLabel>
+            <p className="mb-2 text-xs leading-relaxed text-muted-foreground">
+              オンにすると、体調記録の入力画面に生理の有無の項目が表示されます。あとから変更できます。
+            </p>
+            <div className="grid grid-cols-2 gap-2">
+              {(
+                [
+                  [true, '記録する'],
+                  [false, '記録しない'],
+                ] as const
+              ).map(([v, label]) => (
+                <button
+                  key={label}
+                  type="button"
+                  onClick={() => update('trackPeriod', v)}
+                  aria-pressed={profile.trackPeriod === v}
+                  className={cn(
+                    'rounded-2xl border px-3 py-3.5 text-sm font-medium transition-all active:scale-[0.98]',
+                    profile.trackPeriod === v
+                      ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
+                      : 'border-border bg-card text-muted-foreground hover:border-primary/40',
+                  )}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
         <div>
           <FieldLabel>いま気になっていること（複数選択可）</FieldLabel>
           <div className="flex flex-wrap gap-2">

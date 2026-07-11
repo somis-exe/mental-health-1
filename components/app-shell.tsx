@@ -9,7 +9,7 @@ import { DailyRecordScreen, type DailyRecordScreenHandle } from '@/components/sc
 import { RecordListScreen } from '@/components/screens/record-list-screen'
 import { ReportScreen } from '@/components/screens/report-screen'
 import { ProfileScreen, type ProfileScreenHandle } from '@/components/screens/profile-screen'
-import { type Screen, type Profile, type DailyRecord, dayKey } from '@/lib/health'
+import { type Screen, type Profile, type DailyRecord, dayKey, periodTrackingEnabled } from '@/lib/health'
 
 const TITLES: Record<Screen, string> = {
   record: '体調記録',
@@ -111,6 +111,7 @@ export function AppShell({
               key={activeDate ?? 'new'}
               date={activeDate ?? new Date().toISOString()}
               initialRecord={activeRecord}
+              showPeriod={periodTrackingEnabled(profile)}
               onSave={onSaveRecord}
               onBack={() => setRecordView('list')}
             />

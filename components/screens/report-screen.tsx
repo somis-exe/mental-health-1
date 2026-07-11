@@ -502,6 +502,7 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
           r.exercise,
           r.suicidalIdeation,
           r.selfHarm,
+          r.period,
           r.memo,
         ]),
       ),
@@ -569,8 +570,12 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
       if (suicidalIdeationDays > 0) lines.push(`希死念慮の記録：${suicidalIdeationDays}日`)
       if (selfHarmDays > 0) lines.push(`自傷行為の記録：${selfHarmDays}日`)
     }
+    const periodDays = filtered.filter((r) => r.period === true).length
+    if (periodDays > 0) {
+      lines.push(``, `【生理のあった日】${periodDays}日`)
+    }
     return lines.join('\n')
-  }, [profile, rangeLabel, filtered.length, avgMood, avgSleep, symptomCounts, suicidalIdeationDays, selfHarmDays])
+  }, [profile, rangeLabel, filtered, avgMood, avgSleep, symptomCounts, suicidalIdeationDays, selfHarmDays])
 
   const handleCopy = async () => {
     try {
