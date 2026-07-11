@@ -130,6 +130,10 @@ export const DailyRecordScreen = forwardRef<
   const [exercise, setExercise] = useState<string | null>(initialRecord?.exercise ?? null)
   const [bath, setBath] = useState<boolean | null>(initialRecord?.bath ?? null)
   const [medication, setMedication] = useState<boolean | null>(initialRecord?.medication ?? null)
+  const [suicidalIdeation, setSuicidalIdeation] = useState<boolean | null>(
+    initialRecord?.suicidalIdeation ?? null,
+  )
+  const [selfHarm, setSelfHarm] = useState<boolean | null>(initialRecord?.selfHarm ?? null)
   const [memo, setMemo] = useState(initialRecord?.memo ?? '')
   const [saved, setSaved] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
@@ -147,6 +151,8 @@ export const DailyRecordScreen = forwardRef<
     exercise: string | null
     bath: boolean | null
     medication: boolean | null
+    suicidalIdeation: boolean | null
+    selfHarm: boolean | null
     memo: string
   }) => JSON.stringify(v)
 
@@ -164,6 +170,8 @@ export const DailyRecordScreen = forwardRef<
       exercise: initialRecord?.exercise ?? null,
       bath: initialRecord?.bath ?? null,
       medication: initialRecord?.medication ?? null,
+      suicidalIdeation: initialRecord?.suicidalIdeation ?? null,
+      selfHarm: initialRecord?.selfHarm ?? null,
       memo: initialRecord?.memo ?? '',
     }),
   )
@@ -187,6 +195,8 @@ export const DailyRecordScreen = forwardRef<
       exercise,
       bath,
       medication,
+      suicidalIdeation,
+      selfHarm,
       memo,
     }) !== lastSavedSnapshot || aiDiaryText.trim() !== ''
 
@@ -220,6 +230,8 @@ export const DailyRecordScreen = forwardRef<
         exercise: string | null
         bath: boolean | null
         medication: boolean | null
+        suicidalIdeation: boolean | null
+        selfHarm: boolean | null
         memo: string
       }
 
@@ -243,6 +255,8 @@ export const DailyRecordScreen = forwardRef<
       if (r.exercise) setExercise(r.exercise)
       if (r.bath !== null) setBath(r.bath)
       if (r.medication !== null) setMedication(r.medication)
+      if (r.suicidalIdeation !== null) setSuicidalIdeation(r.suicidalIdeation)
+      if (r.selfHarm !== null) setSelfHarm(r.selfHarm)
       if (r.memo) setMemo((prev) => (prev ? `${prev}\n${r.memo}` : r.memo))
 
       setAiOpen(false)
@@ -264,10 +278,11 @@ export const DailyRecordScreen = forwardRef<
   const feedback = useMemo(() => {
     if (!saved || repMood === null) return null
     const shortSleep = sleepHours !== null && sleepHours < 5
-    const tired = repMood <= 2 || shortSleep || symptoms.length >= 3
-    const alert = repMood <= 2 && (shortSleep || symptoms.length >= 3)
-    return { tired, alert }
-  }, [saved, repMood, sleepHours, symptoms])
+    const crisisFlag = suicidalIdeation === true || selfHarm === true
+    const tired = repMood <= 2 || shortSleep || symptoms.length >= 3 || crisisFlag
+    const alert = crisisFlag || (repMood <= 2 && (shortSleep || symptoms.length >= 3))
+    return { tired, alert, crisisFlag }
+  }, [saved, repMood, sleepHours, symptoms, suicidalIdeation, selfHarm])
 
   const performSave = () => {
     if (!hasMood) return
@@ -286,6 +301,8 @@ export const DailyRecordScreen = forwardRef<
         exercise,
         bath,
         medication,
+        suicidalIdeation,
+        selfHarm,
         memo,
       }),
     )
@@ -305,6 +322,8 @@ export const DailyRecordScreen = forwardRef<
       exercise,
       bath,
       medication,
+      suicidalIdeation,
+      selfHarm,
       memo,
     })
   }
@@ -424,6 +443,21 @@ export const DailyRecordScreen = forwardRef<
               {s}
             </Chip>
           ))}
+        </div>
+        <div className="mt-5 flex flex-col gap-4 border-t border-border pt-4">
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            つらい気持ちがあったときの記録にお使いください。無理に入力する必要はありません。
+          </p>
+          <div>
+            <p className="mb-2 text-sm font-medium text-muted-foreground">
+              死にたい気持ち（希死念慮）はあった
+            </p>
+            <Toggle value={suicidalIdeation} onChange={setSuicidalIdeation} labels={['なし', 'あり']} />
+          </div>
+          <div>
+            <p className="mb-2 text-sm font-medium text-muted-foreground">自分を傷つけること（自傷）はあった</p>
+            <Toggle value={selfHarm} onChange={setSelfHarm} labels={['なし', 'あり']} />
+          </div>
         </div>
       </Section>
 
@@ -567,7 +601,9 @@ export const DailyRecordScreen = forwardRef<
                 <h3 className="text-base font-bold text-destructive">受診の目安</h3>
               </div>
               <p className="mb-4 text-sm leading-relaxed text-foreground/80">
-                つらい状態が続いているようです。ひとりで抱え込まず、医療機関や相談窓口への相談を検討してみてもよいかもしれません。
+                {feedback.crisisFlag
+                  ? '記録、ありがとうございます。ひとりで抱え込まず、できるだけ早く医療機関か相談窓口に話してみてください。今すぐ話したいときは、よりそいホットライン（0120-279-338、24時間・無料）や、いのちの電話（0570-783-556）も利用できます。'
+                  : 'つらい状態が続いているようです。ひとりで抱え込まず、医療機関や相談窓口への相談を検討してみてもよいかもしれません。'}
               </p>
               <button
                 type="button"

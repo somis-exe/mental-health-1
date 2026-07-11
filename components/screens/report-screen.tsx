@@ -500,6 +500,8 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
           r.nightWaking,
           r.appetite,
           r.exercise,
+          r.suicidalIdeation,
+          r.selfHarm,
           r.memo,
         ]),
       ),
@@ -538,13 +540,19 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [filtered])
 
+  const suicidalIdeationDays = useMemo(
+    () => filtered.filter((r) => r.suicidalIdeation === true).length,
+    [filtered],
+  )
+  const selfHarmDays = useMemo(() => filtered.filter((r) => r.selfHarm === true).length, [filtered])
+
   const questionnaireText = useMemo(() => {
     const age = new Date().getFullYear() - Number(profile.birthYear || '1995')
     const topSymptoms = symptomCounts
       .slice(0, 3)
       .map(([s, c]) => `${s}（${c}回）`)
       .join('、')
-    return [
+    const lines = [
       `【基本情報】`,
       `ニックネーム：${profile.nickname || '（未設定）'}`,
       `年齢：約${age}歳 / 性別：${profile.gender || '未回答'}`,
@@ -555,8 +563,14 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
       `【気分の平均スコア】${avgMood !== null ? avgMood.toFixed(1) : '—'} / 5.0`,
       `【平均睡眠時間】${avgSleep !== null ? avgSleep.toFixed(1) : '—'} 時間`,
       `【よく見られた症状】${topSymptoms || 'なし'}`,
-    ].join('\n')
-  }, [profile, rangeLabel, filtered.length, avgMood, avgSleep, symptomCounts])
+    ]
+    if (suicidalIdeationDays > 0 || selfHarmDays > 0) {
+      lines.push(``, `【安全に関わる記録】`)
+      if (suicidalIdeationDays > 0) lines.push(`希死念慮の記録：${suicidalIdeationDays}日`)
+      if (selfHarmDays > 0) lines.push(`自傷行為の記録：${selfHarmDays}日`)
+    }
+    return lines.join('\n')
+  }, [profile, rangeLabel, filtered.length, avgMood, avgSleep, symptomCounts, suicidalIdeationDays, selfHarmDays])
 
   const handleCopy = async () => {
     try {

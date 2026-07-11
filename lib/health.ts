@@ -78,6 +78,8 @@ export type DailyRecord = {
   exercise: string | null
   bath: boolean | null
   medication: boolean | null
+  suicidalIdeation: boolean | null
+  selfHarm: boolean | null
   memo: string
 }
 
@@ -275,6 +277,8 @@ export type DailyRecordRow = {
   exercise: string | null
   bath: boolean | null
   medication: boolean | null
+  suicidal_ideation: boolean | null
+  self_harm: boolean | null
   memo: string
 }
 
@@ -295,6 +299,8 @@ export function recordFromRow(row: DailyRecordRow): DailyRecord {
     exercise: row.exercise,
     bath: row.bath,
     medication: row.medication,
+    suicidalIdeation: row.suicidal_ideation,
+    selfHarm: row.self_harm,
     memo: row.memo,
   }
 }
@@ -316,6 +322,8 @@ export function recordToRow(record: DailyRecord, userId: string) {
     exercise: record.exercise,
     bath: record.bath,
     medication: record.medication,
+    suicidal_ideation: record.suicidalIdeation,
+    self_harm: record.selfHarm,
     memo: record.memo,
   }
 }
@@ -369,6 +377,16 @@ export function generateTalkingPoints(records: DailyRecord[]): string[] {
   const lowAppetiteCount = sorted.filter((r) => r.appetite === APPETITE[2]).length
   if (lowAppetiteCount >= 2) {
     points.push(`食欲が落ちている日が${lowAppetiteCount}日ありました。`)
+  }
+
+  // Safety-critical: always surface first, ahead of other points, when present.
+  const selfHarmDays = sorted.filter((r) => r.selfHarm === true).length
+  if (selfHarmDays > 0) {
+    points.unshift(`この期間、自傷行為の記録が${selfHarmDays}日ありました。`)
+  }
+  const suicidalIdeationDays = sorted.filter((r) => r.suicidalIdeation === true).length
+  if (suicidalIdeationDays > 0) {
+    points.unshift(`この期間、希死念慮（死にたい気持ち）の記録が${suicidalIdeationDays}日ありました。`)
   }
 
   if (points.length === 0) {

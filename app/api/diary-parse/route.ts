@@ -25,6 +25,8 @@ type ParsedDiary = {
   exercise: string | null
   bath: boolean | null
   medication: boolean | null
+  suicidalIdeation: boolean | null
+  selfHarm: boolean | null
   memo: string
 }
 
@@ -50,10 +52,12 @@ function buildPrompt(text: string): string {
     `- exercise: 次のいずれか、言及がなければnull: ${EXERCISE.join('、')}`,
     '- bath: 入浴したかどうか。true/false、言及がなければnull。',
     '- medication: 服薬したかどうか。true/false、言及がなければnull。',
+    '- suicidalIdeation: 死にたい気持ち・希死念慮についての明確な記述がある場合のみtrue/false。言及がなければnull。推測で判断しないこと。',
+    '- selfHarm: 自傷行為についての明確な記述がある場合のみtrue/false。言及がなければnull。推測で判断しないこと。',
     '- memo: 上記の項目に当てはまらない内容。なければ空文字。',
     '',
     '出力は次のJSON形式のみを返してください（説明文やコードブロックは不要）:',
-    '{"moodMorning": number|null, "moodNoon": number|null, "moodNight": number|null, "symptoms": string[], "sleepStart": string|null, "sleepEnd": string|null, "sleepHours": number|null, "sleepOnset": string|null, "nightWaking": boolean|null, "appetite": string|null, "exercise": string|null, "bath": boolean|null, "medication": boolean|null, "memo": string}',
+    '{"moodMorning": number|null, "moodNoon": number|null, "moodNight": number|null, "symptoms": string[], "sleepStart": string|null, "sleepEnd": string|null, "sleepHours": number|null, "sleepOnset": string|null, "nightWaking": boolean|null, "appetite": string|null, "exercise": string|null, "bath": boolean|null, "medication": boolean|null, "suicidalIdeation": boolean|null, "selfHarm": boolean|null, "memo": string}',
     '',
     '医学的な診断や治療方針の判断は行わないでください。日記に書かれていないことを推測して埋めないでください。',
   ].join('\n')
@@ -155,6 +159,8 @@ export async function POST(req: Request) {
       exercise: asEnum(parsed.exercise, EXERCISE),
       bath: asBool(parsed.bath),
       medication: asBool(parsed.medication),
+      suicidalIdeation: asBool(parsed.suicidalIdeation),
+      selfHarm: asBool(parsed.selfHarm),
       memo: typeof parsed.memo === 'string' ? parsed.memo.trim() : '',
     }
 
