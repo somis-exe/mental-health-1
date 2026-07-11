@@ -235,7 +235,7 @@ function CompareChart({
   const h = 140
   const padRight = 12
   const padY = 18
-  const plotX0 = 16
+  const plotX0 = 30
   const plotX1 = w - padRight
   const innerW = plotX1 - plotX0
   const innerH = h - padY * 2
@@ -254,17 +254,21 @@ function CompareChart({
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label={ariaLabel}>
       {[0, 0.5, 1].map((v) => (
-        <line
-          key={v}
-          x1={plotX0}
-          x2={plotX1}
-          y1={y(v)}
-          y2={y(v)}
-          stroke="var(--border)"
-          strokeWidth={1}
-          strokeDasharray="3 4"
-          opacity={0.4}
-        />
+        <g key={v}>
+          <line
+            x1={plotX0}
+            x2={plotX1}
+            y1={y(v)}
+            y2={y(v)}
+            stroke="var(--border)"
+            strokeWidth={1}
+            strokeDasharray="3 4"
+            opacity={0.4}
+          />
+          <text x={plotX0 - 6} y={y(v)} dy={3} textAnchor="end" className="fill-muted-foreground" fontSize={9}>
+            {Math.round(v * 100)}%
+          </text>
+        </g>
       ))}
       {[
         { points: pointsA, color: colorA },
@@ -669,6 +673,9 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
             {selectedMetrics.length === 2 && compareSeries ? (
               compareRows && compareRows.length >= 2 ? (
                 <>
+                  <p className="mb-1 text-[11px] leading-relaxed text-muted-foreground">
+                    縦軸は各項目をその記録範囲内での割合（0〜100%）に揃えて表示しています。実際の値は下の平均を参考にしてください。
+                  </p>
                   <CompareChart
                     seriesA={compareSeries.a}
                     seriesB={compareSeries.b}
