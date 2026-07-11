@@ -96,7 +96,7 @@ function Toggle({
 
 
 /** 保護者の入力画面に出す、本人の同日の記録（共有ビュー経由・メモ等除外済み）の要約。 */
-function ReferencePanel({ record }: { record: DailyRecord | null }) {
+function ReferencePanel({ record, dateLabel }: { record: DailyRecord | null; dateLabel: string }) {
   const [open, setOpen] = useState(true)
   const moods = record ? dayMoodEntries(record) : []
   const slotLabel = (slot: string) => MOOD_SLOTS.find((s) => s.value === slot)?.label ?? slot
@@ -117,7 +117,7 @@ function ReferencePanel({ record }: { record: DailyRecord | null }) {
         className="flex w-full items-center gap-2 rounded-2xl px-2 py-1.5 text-left"
       >
         <ListChecks className="size-4.5 shrink-0 text-primary" />
-        <span className="flex-1 text-sm font-bold text-foreground">本人のこの日の記録</span>
+        <span className="flex-1 text-sm font-bold text-foreground">本人の{dateLabel}の記録</span>
         <ChevronDown
           className={cn('size-5 shrink-0 text-muted-foreground transition-transform', open && 'rotate-180')}
         />
@@ -465,7 +465,7 @@ export const DailyRecordScreen = forwardRef<
       )}
 
       {/* Guardian: patient's same-day record for reference */}
-      {isGuardian && <ReferencePanel record={referenceRecord} />}
+      {isGuardian && <ReferencePanel record={referenceRecord} dateLabel={dateLabel} />}
 
       {/* AI diary entry */}
       {!isGuardian && (
