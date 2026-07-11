@@ -460,9 +460,14 @@ export const DailyRecordScreen = forwardRef<
       </div>
 
       {isGuardian && (
-        <p className="text-base font-bold leading-relaxed text-foreground">
-          （保護者から見て）本人の様子から感じた体調を記録してください。分かるタイミングだけでかまいません。
-        </p>
+        <div>
+          <p className="text-base font-bold leading-relaxed text-foreground">
+            保護者から見たお子様の体調記録を入力してください
+          </p>
+          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">
+            ※分かるタイミングだけでかまいません。
+          </p>
+        </div>
       )}
 
       {/* Guardian: patient's same-day record for reference */}
