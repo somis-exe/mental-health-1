@@ -5,6 +5,10 @@ import {
   TrendingUp,
   Moon,
   Smile,
+  Utensils,
+  Activity,
+  Bath,
+  Pill,
   ClipboardList,
   Copy,
   Check,
@@ -19,11 +23,87 @@ import {
   dayMoodEntries,
   formatRangeLabel,
   generateTalkingPoints,
+  metricDayValue,
   type Profile,
   type DailyRecord,
   type MoodSlot,
+  type ReportMetricKey,
 } from '@/lib/health'
 import { cn } from '@/lib/utils'
+
+const METRIC_ORDER: ReportMetricKey[] = ['mood', 'sleep', 'appetite', 'exercise', 'bath', 'medication']
+
+const METRIC_META: Record<
+  ReportMetricKey,
+  {
+    label: string
+    icon: React.ReactNode
+    color: string
+    min: number
+    max: number
+    ticks: number[]
+    mid?: number
+    format: (v: number) => string
+  }
+> = {
+  mood: {
+    label: '気分',
+    icon: <Smile className="size-3.5" />,
+    color: 'var(--primary)',
+    min: 1,
+    max: 5,
+    ticks: [1, 2, 3, 4, 5],
+    mid: 3,
+    format: (v) => v.toFixed(1),
+  },
+  sleep: {
+    label: '睡眠',
+    icon: <Moon className="size-3.5" />,
+    color: 'light-dark(#2a78d6, #3987e5)',
+    min: 0,
+    max: 12,
+    ticks: [],
+    format: (v) => `${v.toFixed(1)}時間`,
+  },
+  appetite: {
+    label: '食欲',
+    icon: <Utensils className="size-3.5" />,
+    color: 'light-dark(#eb6834, #d95926)',
+    min: 1,
+    max: 3,
+    ticks: [1, 2, 3],
+    mid: 2,
+    format: (v) => (v >= 2.5 ? 'しっかり食べた' : v >= 1.5 ? '普通' : 'あまり食べていない'),
+  },
+  exercise: {
+    label: '運動',
+    icon: <Activity className="size-3.5" />,
+    color: 'light-dark(#008300, #008300)',
+    min: 0,
+    max: 2,
+    ticks: [0, 1, 2],
+    mid: 1,
+    format: (v) => (v >= 1.5 ? 'ハード' : v >= 0.5 ? 'あり' : 'なし'),
+  },
+  bath: {
+    label: '入浴',
+    icon: <Bath className="size-3.5" />,
+    color: 'light-dark(#4a3aa7, #9085e9)',
+    min: 0,
+    max: 1,
+    ticks: [0, 1],
+    format: (v) => (v >= 0.5 ? 'した' : 'していない'),
+  },
+  medication: {
+    label: '服薬',
+    icon: <Pill className="size-3.5" />,
+    color: 'light-dark(#e87ba4, #d55181)',
+    min: 0,
+    max: 1,
+    ticks: [0, 1],
+    format: (v) => (v >= 0.5 ? 'あり' : 'なし'),
+  },
+}
 
 const RANGES = ['過去1週間', '過去1ヶ月', '過去3ヶ月', '期間を指定'] as const
 type Range = (typeof RANGES)[number]
@@ -68,6 +148,8 @@ function TrendChart({
   midValue,
   ticks,
   ariaLabel,
+  color = 'var(--primary)',
+  formatTick,
 }: {
   data: { label: string; value: number }[]
   min: number
@@ -75,6 +157,8 @@ function TrendChart({
   midValue?: number
   ticks: number[]
   ariaLabel: string
+  color?: string
+  formatTick?: (v: number) => string
 }) {
   const w = 320
   const h = 140
@@ -92,7 +176,7 @@ function TrendChart({
   const area = `${plotX0},${padY + innerH} ${line} ${plotX1},${padY + innerH}`
   const showMarkers = data.length <= 24
   const labelStep = Math.max(1, Math.ceil(data.length / 6))
-  const formatTick = (v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1))
+  const tickLabel = formatTick ?? ((v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)))
 
   return (
     <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label={ariaLabel}>
@@ -109,15 +193,15 @@ function TrendChart({
             opacity={midValue !== undefined && v === midValue ? 0.7 : 0.4}
           />
           <text x={plotX0 - 6} y={y(v)} dy={3} textAnchor="end" className="fill-muted-foreground" fontSize={9}>
-            {formatTick(v)}
+            {tickLabel(v)}
           </text>
         </g>
       ))}
-      <polygon points={area} fill="var(--primary)" opacity={0.1} />
+      <polygon points={area} fill={color} opacity={0.1} />
       <polyline
         points={line}
         fill="none"
-        stroke="var(--primary)"
+        stroke={color}
         strokeWidth={2.5}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -125,7 +209,7 @@ function TrendChart({
       {points.map((p, i) => (
         <g key={`${p.label}-${i}`}>
           {showMarkers && (
-            <circle cx={p.x} cy={p.y} r={4} fill="var(--card)" stroke="var(--primary)" strokeWidth={2.5} />
+            <circle cx={p.x} cy={p.y} r={4} fill="var(--card)" stroke={color} strokeWidth={2.5} />
           )}
           {i % labelStep === 0 && (
             <text x={p.x} y={h - 2} textAnchor="middle" className="fill-muted-foreground" fontSize={10}>
@@ -135,6 +219,133 @@ function TrendChart({
         </g>
       ))}
     </svg>
+  )
+}
+
+function CompareChart({
+  seriesA,
+  seriesB,
+  ariaLabel,
+}: {
+  seriesA: { key: ReportMetricKey; data: { label: string; norm: number }[] }
+  seriesB: { key: ReportMetricKey; data: { label: string; norm: number }[] }
+  ariaLabel: string
+}) {
+  const w = 320
+  const h = 140
+  const padRight = 12
+  const padY = 18
+  const plotX0 = 16
+  const plotX1 = w - padRight
+  const innerW = plotX1 - plotX0
+  const innerH = h - padY * 2
+  const data = seriesA.data
+  const stepX = data.length > 1 ? innerW / (data.length - 1) : 0
+  const y = (v: number) => padY + innerH - v * innerH
+  const buildPoints = (series: { data: { label: string; norm: number }[] }) =>
+    series.data.map((d, i) => ({ x: plotX0 + i * stepX, y: y(d.norm), label: d.label }))
+  const pointsA = buildPoints(seriesA)
+  const pointsB = buildPoints(seriesB)
+  const showMarkers = data.length <= 24
+  const labelStep = Math.max(1, Math.ceil(data.length / 6))
+  const colorA = METRIC_META[seriesA.key].color
+  const colorB = METRIC_META[seriesB.key].color
+
+  return (
+    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" role="img" aria-label={ariaLabel}>
+      {[0, 0.5, 1].map((v) => (
+        <line
+          key={v}
+          x1={plotX0}
+          x2={plotX1}
+          y1={y(v)}
+          y2={y(v)}
+          stroke="var(--border)"
+          strokeWidth={1}
+          strokeDasharray="3 4"
+          opacity={0.4}
+        />
+      ))}
+      {[
+        { points: pointsA, color: colorA },
+        { points: pointsB, color: colorB },
+      ].map(({ points, color }, si) => (
+        <polyline
+          key={si}
+          points={points.map((p) => `${p.x},${p.y}`).join(' ')}
+          fill="none"
+          stroke={color}
+          strokeWidth={2.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      ))}
+      {pointsA.map(
+        (p, i) =>
+          showMarkers && (
+            <circle key={`a-${i}`} cx={p.x} cy={p.y} r={3.5} fill="var(--card)" stroke={colorA} strokeWidth={2} />
+          ),
+      )}
+      {pointsB.map(
+        (p, i) =>
+          showMarkers && (
+            <circle key={`b-${i}`} cx={p.x} cy={p.y} r={3.5} fill="var(--card)" stroke={colorB} strokeWidth={2} />
+          ),
+      )}
+      {pointsA.map(
+        (p, i) =>
+          i % labelStep === 0 && (
+            <text
+              key={`l-${i}`}
+              x={p.x}
+              y={h - 2}
+              textAnchor="middle"
+              className="fill-muted-foreground"
+              fontSize={10}
+            >
+              {p.label}
+            </text>
+          ),
+      )}
+    </svg>
+  )
+}
+
+function MetricChip({
+  active,
+  color,
+  icon,
+  label,
+  onClick,
+}: {
+  active: boolean
+  color: string
+  icon: React.ReactNode
+  label: string
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      style={
+        active
+          ? { borderColor: color, backgroundColor: `color-mix(in oklch, ${color} 14%, transparent)` }
+          : undefined
+      }
+      className={cn(
+        'flex items-center gap-1.5 rounded-full border px-3.5 py-2 text-[13px] font-semibold transition-all active:scale-[0.97]',
+        active
+          ? 'text-foreground shadow-sm'
+          : 'border-border bg-card text-muted-foreground hover:border-primary/40 hover:text-foreground',
+      )}
+    >
+      <span className="flex size-3.5 items-center justify-center" style={active ? { color } : undefined}>
+        {icon}
+      </span>
+      {label}
+    </button>
   )
 }
 
@@ -168,7 +379,7 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   const [fromDate, setFromDate] = useState(isoDaysAgo(14))
   const [toDate, setToDate] = useState(isoDaysAgo(0))
   const [copied, setCopied] = useState(false)
-  const [chartMetric, setChartMetric] = useState<'mood' | 'sleep'>('mood')
+  const [selectedMetrics, setSelectedMetrics] = useState<ReportMetricKey[]>(['mood'])
   const [supportTab, setSupportTab] = useState<'simple' | 'ai'>('simple')
   const [aiPoints, setAiPoints] = useState<AiPoint[] | null>(null)
   const [aiRequestKey, setAiRequestKey] = useState<string | null>(null)
@@ -221,7 +432,53 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
   const sleepDomainMax = Math.ceil(Math.max(8, ...sleepChartData.map((d) => d.value)) / 2) * 2
   const sleepTicks = Array.from({ length: sleepDomainMax / 2 + 1 }, (_, i) => i * 2)
 
-  const activeChartData = chartMetric === 'mood' ? moodChartData : sleepChartData
+  const metricRange = (key: ReportMetricKey): { min: number; max: number } =>
+    key === 'sleep' ? { min: 0, max: sleepDomainMax } : { min: METRIC_META[key].min, max: METRIC_META[key].max }
+
+  const toggleMetric = (key: ReportMetricKey) => {
+    setSelectedMetrics((prev) => {
+      if (prev.includes(key)) return prev.length === 1 ? prev : prev.filter((k) => k !== key)
+      if (prev.length >= 2) return [prev[1], key]
+      return [...prev, key]
+    })
+  }
+
+  const singleKey = selectedMetrics[0]
+  const singleChartData = useMemo(() => {
+    if (selectedMetrics.length !== 1) return []
+    if (singleKey === 'mood') return moodChartData
+    if (singleKey === 'sleep') return sleepChartData
+    return filtered
+      .map((r) => ({ label: formatRangeLabel(r.date), value: metricDayValue(singleKey, r) }))
+      .filter((d): d is { label: string; value: number } => d.value !== null)
+  }, [filtered, selectedMetrics, singleKey, moodChartData, sleepChartData])
+
+  const compareRows = useMemo(() => {
+    if (selectedMetrics.length !== 2) return null
+    const [keyA, keyB] = selectedMetrics
+    return filtered
+      .map((r) => ({
+        label: formatRangeLabel(r.date),
+        a: metricDayValue(keyA, r),
+        b: metricDayValue(keyB, r),
+      }))
+      .filter((r): r is { label: string; a: number; b: number } => r.a !== null && r.b !== null)
+  }, [filtered, selectedMetrics])
+
+  const compareSeries = useMemo(() => {
+    if (!compareRows || selectedMetrics.length !== 2) return null
+    const [keyA, keyB] = selectedMetrics
+    const normalize = (v: number, key: ReportMetricKey) => {
+      const { min, max } = metricRange(key)
+      return max > min ? (v - min) / (max - min) : 0.5
+    }
+    return {
+      a: { key: keyA, data: compareRows.map((r) => ({ label: r.label, norm: normalize(r.a, keyA) })) },
+      b: { key: keyB, data: compareRows.map((r) => ({ label: r.label, norm: normalize(r.b, keyB) })) },
+      avgA: average(compareRows.map((r) => r.a)),
+      avgB: average(compareRows.map((r) => r.b)),
+    }
+  }, [compareRows, selectedMetrics, sleepDomainMax])
 
   const talkingPoints = useMemo(() => generateTalkingPoints(filtered), [filtered])
 
@@ -394,49 +651,65 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
                 unit="時間"
               />
             </div>
-            <div className="mb-3 grid grid-cols-2 gap-1 rounded-2xl bg-muted p-1">
-              <button
-                type="button"
-                onClick={() => setChartMetric('mood')}
-                className={cn(
-                  'flex items-center justify-center gap-1 rounded-xl py-2 text-[13px] font-semibold transition-all',
-                  chartMetric === 'mood' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
-                )}
-              >
-                <Smile className="size-3.5" />
-                気分の推移
-              </button>
-              <button
-                type="button"
-                onClick={() => setChartMetric('sleep')}
-                className={cn(
-                  'flex items-center justify-center gap-1 rounded-xl py-2 text-[13px] font-semibold transition-all',
-                  chartMetric === 'sleep' ? 'bg-card text-foreground shadow-sm' : 'text-muted-foreground',
-                )}
-              >
-                <Moon className="size-3.5" />
-                睡眠の推移
-              </button>
+            <div className="mb-2 flex flex-wrap gap-2">
+              {METRIC_ORDER.map((key) => (
+                <MetricChip
+                  key={key}
+                  active={selectedMetrics.includes(key)}
+                  color={METRIC_META[key].color}
+                  icon={METRIC_META[key].icon}
+                  label={METRIC_META[key].label}
+                  onClick={() => toggleMetric(key)}
+                />
+              ))}
             </div>
-            {activeChartData.length >= 2 ? (
-              chartMetric === 'mood' ? (
-                <TrendChart
-                  data={moodChartData}
-                  min={1}
-                  max={5}
-                  midValue={3}
-                  ticks={[1, 2, 3, 4, 5]}
-                  ariaLabel="気分の推移グラフ"
-                />
+            <p className="mb-3 text-xs leading-relaxed text-muted-foreground">
+              最大2つまで選択できます。2つ選ぶと重ねて比較できます。
+            </p>
+            {selectedMetrics.length === 2 && compareSeries ? (
+              compareRows && compareRows.length >= 2 ? (
+                <>
+                  <CompareChart
+                    seriesA={compareSeries.a}
+                    seriesB={compareSeries.b}
+                    ariaLabel={`${METRIC_META[selectedMetrics[0]].label}と${METRIC_META[selectedMetrics[1]].label}の比較グラフ`}
+                  />
+                  <div className="mt-3 flex flex-wrap gap-4">
+                    {(
+                      [
+                        [selectedMetrics[0], compareSeries.avgA],
+                        [selectedMetrics[1], compareSeries.avgB],
+                      ] as const
+                    ).map(([key, avg]) => (
+                      <div key={key} className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
+                        <span
+                          className="size-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: METRIC_META[key].color }}
+                        />
+                        {METRIC_META[key].label}
+                        <span className="font-semibold text-foreground">
+                          {avg !== null ? METRIC_META[key].format(avg) : '—'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </>
               ) : (
-                <TrendChart
-                  data={sleepChartData}
-                  min={0}
-                  max={sleepDomainMax}
-                  ticks={sleepTicks}
-                  ariaLabel="睡眠時間の推移グラフ"
-                />
+                <p className="text-center text-xs text-muted-foreground">
+                  この2項目が両方とも記録されている日が2日分以上必要です。
+                </p>
               )
+            ) : singleChartData.length >= 2 ? (
+              <TrendChart
+                data={singleChartData}
+                min={metricRange(singleKey).min}
+                max={metricRange(singleKey).max}
+                midValue={METRIC_META[singleKey].mid}
+                ticks={singleKey === 'sleep' ? sleepTicks : METRIC_META[singleKey].ticks}
+                ariaLabel={`${METRIC_META[singleKey].label}の推移グラフ`}
+                color={METRIC_META[singleKey].color}
+                formatTick={singleKey === 'sleep' ? undefined : METRIC_META[singleKey].format}
+              />
             ) : (
               <p className="text-center text-xs text-muted-foreground">
                 グラフ表示には2日分以上の記録が必要です。
