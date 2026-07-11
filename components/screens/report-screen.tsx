@@ -9,6 +9,7 @@ import {
   Activity,
   Bath,
   Pill,
+  Droplets,
   ClipboardList,
   Copy,
   Check,
@@ -24,6 +25,7 @@ import {
   formatRangeLabel,
   generateTalkingPoints,
   metricDayValue,
+  periodTrackingEnabled,
   type Profile,
   type DailyRecord,
   type MoodSlot,
@@ -31,7 +33,7 @@ import {
 } from '@/lib/health'
 import { cn } from '@/lib/utils'
 
-const METRIC_ORDER: ReportMetricKey[] = ['mood', 'sleep', 'appetite', 'exercise', 'bath', 'medication']
+const METRIC_ORDER: ReportMetricKey[] = ['mood', 'sleep', 'appetite', 'exercise', 'bath', 'medication', 'period']
 
 const METRIC_META: Record<
   ReportMetricKey,
@@ -98,6 +100,15 @@ const METRIC_META: Record<
     label: '服薬',
     icon: <Pill className="size-3.5" />,
     color: 'light-dark(#e87ba4, #d55181)',
+    min: 0,
+    max: 1,
+    ticks: [0, 1],
+    format: (v) => (v >= 0.5 ? 'あり' : 'なし'),
+  },
+  period: {
+    label: '生理',
+    icon: <Droplets className="size-3.5" />,
+    color: 'light-dark(#e34948, #c94a4a)',
     min: 0,
     max: 1,
     ticks: [0, 1],
@@ -541,6 +552,10 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
     return [...counts.entries()].sort((a, b) => b[1] - a[1])
   }, [filtered])
 
+  // Keep the chip for users with past period data even if they later turned tracking off.
+  const showPeriodMetric = periodTrackingEnabled(profile) || records.some((r) => r.period !== null)
+  const visibleMetrics = showPeriodMetric ? METRIC_ORDER : METRIC_ORDER.filter((k) => k !== 'period')
+
   const suicidalIdeationDays = useMemo(
     () => filtered.filter((r) => r.suicidalIdeation === true).length,
     [filtered],
@@ -675,7 +690,7 @@ export function ReportScreen({ profile, records }: { profile: Profile; records: 
               />
             </div>
             <div className="mb-2 flex flex-wrap gap-2">
-              {METRIC_ORDER.map((key) => (
+              {visibleMetrics.map((key) => (
                 <MetricChip
                   key={key}
                   active={selectedMetrics.includes(key)}

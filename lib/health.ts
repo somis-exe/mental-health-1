@@ -142,7 +142,7 @@ export function averageMood(record: DailyRecord): Mood | null {
   return Math.round(avg) as Mood
 }
 
-export type ReportMetricKey = 'mood' | 'sleep' | 'appetite' | 'exercise' | 'bath' | 'medication'
+export type ReportMetricKey = 'mood' | 'sleep' | 'appetite' | 'exercise' | 'bath' | 'medication' | 'period'
 
 /** Single day-level numeric value for a metric, or null if that day has no data for it. */
 export function metricDayValue(key: ReportMetricKey, record: DailyRecord): number | null {
@@ -159,6 +159,8 @@ export function metricDayValue(key: ReportMetricKey, record: DailyRecord): numbe
       return record.bath === null ? null : record.bath ? 1 : 0
     case 'medication':
       return record.medication === null ? null : record.medication ? 1 : 0
+    case 'period':
+      return record.period === null ? null : record.period ? 1 : 0
   }
 }
 
