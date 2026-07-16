@@ -21,6 +21,7 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Chip, Section, SelectPill, LeaveConfirmSheet } from '@/components/ui-kit'
+import { FacilitySearchScreen } from '@/components/screens/facility-search-screen'
 import {
   MOODS,
   SYMPTOMS,
@@ -221,6 +222,7 @@ export const DailyRecordScreen = forwardRef<
   const [memo, setMemo] = useState(initialRecord?.memo ?? '')
   const [saved, setSaved] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
+  const [showFacilitySearch, setShowFacilitySearch] = useState(false)
 
   const snapshotOf = (v: {
     moodMorning: Mood | null
@@ -434,6 +436,10 @@ export const DailyRecordScreen = forwardRef<
     } else {
       onBack?.()
     }
+  }
+
+  if (showFacilitySearch) {
+    return <FacilitySearchScreen onBack={() => setShowFacilitySearch(false)} />
   }
 
   return (
@@ -713,7 +719,7 @@ export const DailyRecordScreen = forwardRef<
                 <span className="flex size-8 items-center justify-center rounded-full bg-destructive/15 text-destructive">
                   <Stethoscope className="size-4.5" />
                 </span>
-                <h3 className="text-base font-bold text-destructive">受診の目安</h3>
+                <h3 className="text-base font-bold text-destructive">相談できる窓口があります</h3>
               </div>
               <p className="mb-4 text-sm leading-relaxed text-foreground/80">
                 {feedback.crisisFlag
@@ -722,6 +728,7 @@ export const DailyRecordScreen = forwardRef<
               </p>
               <button
                 type="button"
+                onClick={() => setShowFacilitySearch(true)}
                 className="flex w-full items-center justify-center gap-2 rounded-2xl bg-destructive py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.99]"
               >
                 <MapPin className="size-4" />
