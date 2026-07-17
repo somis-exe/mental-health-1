@@ -1,7 +1,7 @@
 'use client'
 
 import { forwardRef, useImperativeHandle, useState } from 'react'
-import { Check, LogOut, UserRound, HeartHandshake } from 'lucide-react'
+import { Check, LogOut, UserRound, HeartHandshake, ClipboardList } from 'lucide-react'
 import { Chip, FieldLabel, Section } from '@/components/ui-kit'
 import { PatientLinkSettings, GuardianLinkSettings } from '@/components/link-settings'
 import { CONCERNS, GENDERS, type Profile, type AccountType } from '@/lib/health'
@@ -260,6 +260,18 @@ export const ProfileScreen = forwardRef<
       </Section>
       </>
       )}
+
+      <Section title="テスターの皆様へ">
+        <a
+          href="https://docs.google.com/forms/d/e/1FAIpQLSeFicAf6jpjDh7gkn-waElc2xMGgJ1tv47JTaDiwuk5ssts9A/viewform"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center justify-center gap-2 rounded-2xl border border-border bg-card py-3.5 text-sm font-semibold text-foreground transition-all hover:bg-muted active:scale-[0.99]"
+        >
+          <ClipboardList className="size-4" />
+          アンケートに回答する
+        </a>
+      </Section>
 
       <button
         type="button"
