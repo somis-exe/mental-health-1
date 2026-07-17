@@ -515,7 +515,7 @@ export const DailyRecordScreen = forwardRef<
               AIが自動で入力し、当てはまらない内容はメモに保存します。
             </p>
             <p className="mb-2 rounded-xl bg-muted/60 px-3 py-2 text-[11px] leading-relaxed text-muted-foreground">
-              例）睡眠n時間/p~q時/(夜目が覚める)だるい、朝普通、昼落ち着く、夜気分落ちる、食欲あり、入浴◯、薬×、(運動×)家から出てない
+              例）睡眠p~q時/(夜目が覚める)だるい、気分朝普通、昼落ち着く、夜落ちる、食欲あり、入浴◯、薬×、(運動×)家から出てない
             </p>
             <textarea
               value={aiDiaryText}
