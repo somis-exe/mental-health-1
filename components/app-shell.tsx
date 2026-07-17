@@ -159,7 +159,7 @@ export function AppShell({
           <PatientRecordsScreen patient={patient} records={patientRecords} />
         )}
         {screen === 'hospital' && (
-          <HospitalSearchScreen mode={isGuardian ? 'guardian' : 'self'} patientId={isGuardian ? undefined : userId} />
+          <HospitalSearchScreen mode={isGuardian ? 'guardian' : 'self'} userId={userId} />
         )}
         {isGuardian
           ? screen === 'report' && (

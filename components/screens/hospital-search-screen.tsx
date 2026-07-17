@@ -10,6 +10,10 @@ import {
   unshareHospital,
   fetchSharedHospitalIds,
   fetchSharedHospitalsForGuardian,
+  shareHospitalByGuardian,
+  unshareHospitalByGuardian,
+  fetchSharedHospitalIdsByGuardian,
+  fetchSharedHospitalsForPatient,
   type Hospital,
 } from '@/lib/hospitals'
 
@@ -34,10 +38,12 @@ function HospitalCard({
   hospital,
   shared,
   onToggleShare,
+  shareTarget = '保護者',
 }: {
   hospital: Hospital
   shared?: boolean
   onToggleShare?: () => void
+  shareTarget?: string
 }) {
   const age = ageLabel(hospital)
   return (
@@ -99,7 +105,7 @@ function HospitalCard({
           )}
         >
           <Share2 className="size-3.5" />
-          {shared ? '保護者に共有中' : '保護者に共有する'}
+          {shared ? `${shareTarget}に共有中` : `${shareTarget}に共有する`}
         </button>
       )}
     </div>
@@ -108,10 +114,10 @@ function HospitalCard({
 
 export function HospitalSearchScreen({
   mode = 'self',
-  patientId,
+  userId,
 }: {
   mode?: 'self' | 'guardian'
-  patientId?: string
+  userId?: string
 }) {
   const isGuardian = mode === 'guardian'
   const [area, setArea] = useState('')
@@ -125,15 +131,18 @@ export function HospitalSearchScreen({
   const [error, setError] = useState<string | null>(null)
   const [sharedIds, setSharedIds] = useState<Set<string>>(new Set())
   const [sharedByPatient, setSharedByPatient] = useState<(Hospital & { sharedAt: string })[]>([])
+  const [sharedByGuardian, setSharedByGuardian] = useState<(Hospital & { sharedAt: string })[]>([])
 
   useEffect(() => {
-    if (!isGuardian && patientId) {
-      fetchSharedHospitalIds(patientId).then(setSharedIds).catch(() => {})
+    if (!isGuardian && userId) {
+      fetchSharedHospitalIds(userId).then(setSharedIds).catch(() => {})
+      fetchSharedHospitalsForPatient().then(setSharedByGuardian).catch(() => {})
     }
     if (isGuardian) {
       fetchSharedHospitalsForGuardian().then(setSharedByPatient).catch(() => {})
+      if (userId) fetchSharedHospitalIdsByGuardian(userId).then(setSharedIds).catch(() => {})
     }
-  }, [isGuardian, patientId])
+  }, [isGuardian, userId])
 
   const runSearch = async () => {
     setLoading(true)
@@ -157,15 +166,25 @@ export function HospitalSearchScreen({
   }
 
   const toggleShare = async (hospitalId: string) => {
-    if (!patientId) return
+    if (!userId) return
     const next = new Set(sharedIds)
     try {
-      if (next.has(hospitalId)) {
-        await unshareHospital(patientId, hospitalId)
-        next.delete(hospitalId)
+      if (isGuardian) {
+        if (next.has(hospitalId)) {
+          await unshareHospitalByGuardian(userId, hospitalId)
+          next.delete(hospitalId)
+        } else {
+          await shareHospitalByGuardian(userId, hospitalId)
+          next.add(hospitalId)
+        }
       } else {
-        await shareHospital(patientId, hospitalId)
-        next.add(hospitalId)
+        if (next.has(hospitalId)) {
+          await unshareHospital(userId, hospitalId)
+          next.delete(hospitalId)
+        } else {
+          await shareHospital(userId, hospitalId)
+          next.add(hospitalId)
+        }
       }
       setSharedIds(next)
     } catch {
@@ -197,6 +216,16 @@ export function HospitalSearchScreen({
         <Section title="本人が共有した病院" icon={<Share2 className="size-4.5 text-primary" />}>
           <div className="flex flex-col gap-2.5">
             {sharedByPatient.map((h) => (
+              <HospitalCard key={h.id} hospital={h} />
+            ))}
+          </div>
+        </Section>
+      )}
+
+      {!isGuardian && sharedByGuardian.length > 0 && (
+        <Section title="保護者が共有した病院" icon={<Share2 className="size-4.5 text-primary" />}>
+          <div className="flex flex-col gap-2.5">
+            {sharedByGuardian.map((h) => (
               <HospitalCard key={h.id} hospital={h} />
             ))}
           </div>
@@ -318,8 +347,9 @@ export function HospitalSearchScreen({
                 <HospitalCard
                   key={h.id}
                   hospital={h}
-                  shared={!isGuardian && patientId ? sharedIds.has(h.id) : undefined}
-                  onToggleShare={!isGuardian && patientId ? () => toggleShare(h.id) : undefined}
+                  shared={userId ? sharedIds.has(h.id) : undefined}
+                  onToggleShare={userId ? () => toggleShare(h.id) : undefined}
+                  shareTarget={isGuardian ? '本人' : '保護者'}
                 />
               ))}
             </div>

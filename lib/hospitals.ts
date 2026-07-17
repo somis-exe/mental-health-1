@@ -124,3 +124,48 @@ export async function fetchSharedHospitalsForGuardian(): Promise<(Hospital & { s
     sharedAt: row.shared_at,
   }))
 }
+
+/** 保護者用: 指定した病院を連携中の本人に共有する。 */
+export async function shareHospitalByGuardian(guardianId: string, hospitalId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('shared_hospitals_by_guardian')
+    .upsert({ guardian_id: guardianId, hospital_id: hospitalId }, { onConflict: 'guardian_id,hospital_id' })
+  if (error) throw new Error(error.message)
+}
+
+/** 保護者用: 病院の共有を解除する。 */
+export async function unshareHospitalByGuardian(guardianId: string, hospitalId: string): Promise<void> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('shared_hospitals_by_guardian')
+    .delete()
+    .eq('guardian_id', guardianId)
+    .eq('hospital_id', hospitalId)
+  if (error) throw new Error(error.message)
+}
+
+/** 保護者用: 自分が共有済みの病院IDの集合。 */
+export async function fetchSharedHospitalIdsByGuardian(guardianId: string): Promise<Set<string>> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('shared_hospitals_by_guardian')
+    .select('hospital_id')
+    .eq('guardian_id', guardianId)
+  if (error) throw new Error(error.message)
+  return new Set((data ?? []).map((r) => r.hospital_id as string))
+}
+
+/** 本人用: 連携中の保護者が共有した病院一覧（新しい順）。 */
+export async function fetchSharedHospitalsForPatient(): Promise<(Hospital & { sharedAt: string })[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('shared_hospitals_for_patient')
+    .select('*')
+    .order('shared_at', { ascending: false })
+  if (error) throw new Error(error.message)
+  return ((data ?? []) as (HospitalRow & { shared_at: string })[]).map((row) => ({
+    ...fromRow(row),
+    sharedAt: row.shared_at,
+  }))
+}
