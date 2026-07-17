@@ -13,6 +13,7 @@ import {
   HeartPulse,
   Stethoscope,
   MapPin,
+  Phone,
   Check,
   ChevronLeft,
   ChevronDown,
@@ -21,7 +22,6 @@ import {
   Loader2,
 } from 'lucide-react'
 import { Chip, Section, SelectPill, LeaveConfirmSheet } from '@/components/ui-kit'
-import { FacilitySearchScreen } from '@/components/screens/facility-search-screen'
 import {
   MOODS,
   SYMPTOMS,
@@ -184,9 +184,19 @@ export const DailyRecordScreen = forwardRef<
     referenceRecord?: DailyRecord | null
     onSave: (r: DailyRecord) => void
     onBack?: () => void
+    onGoToHospitalSearch?: () => void
   }
 >(function DailyRecordScreen(
-  { date, initialRecord, showPeriod = false, mode = 'self', referenceRecord = null, onSave, onBack },
+  {
+    date,
+    initialRecord,
+    showPeriod = false,
+    mode = 'self',
+    referenceRecord = null,
+    onSave,
+    onBack,
+    onGoToHospitalSearch,
+  },
   ref,
 ) {
   const isGuardian = mode === 'guardian'
@@ -222,7 +232,6 @@ export const DailyRecordScreen = forwardRef<
   const [memo, setMemo] = useState(initialRecord?.memo ?? '')
   const [saved, setSaved] = useState(false)
   const [showLeaveConfirm, setShowLeaveConfirm] = useState(false)
-  const [showFacilitySearch, setShowFacilitySearch] = useState(false)
 
   const snapshotOf = (v: {
     moodMorning: Mood | null
@@ -436,10 +445,6 @@ export const DailyRecordScreen = forwardRef<
     } else {
       onBack?.()
     }
-  }
-
-  if (showFacilitySearch) {
-    return <FacilitySearchScreen onBack={() => setShowFacilitySearch(false)} />
   }
 
   return (
@@ -723,17 +728,43 @@ export const DailyRecordScreen = forwardRef<
               </div>
               <p className="mb-4 text-sm leading-relaxed text-foreground/80">
                 {feedback.crisisFlag
-                  ? '記録、ありがとうございます。ひとりで抱え込まず、できるだけ早く医療機関か相談窓口に話してみてください。今すぐ話したいときは、よりそいホットライン（0120-279-338、24時間・無料）や、いのちの電話（0570-783-556）も利用できます。'
+                  ? '記録、ありがとうございます。ひとりで抱え込まず、できるだけ早く医療機関か相談窓口に話してみてください。'
                   : 'つらい状態が続いているようです。ひとりで抱え込まず、医療機関や相談窓口への相談を検討してみてもよいかもしれません。'}
               </p>
-              <button
-                type="button"
-                onClick={() => setShowFacilitySearch(true)}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl bg-destructive py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.99]"
-              >
-                <MapPin className="size-4" />
-                近くの相談機関を探す
-              </button>
+              {feedback.crisisFlag && (
+                <div className="mb-4 flex flex-col gap-2">
+                  <a
+                    href="tel:0120279338"
+                    className="flex items-center justify-between rounded-2xl border border-destructive/25 bg-background px-4 py-3 transition-all hover:border-destructive/50 active:scale-[0.99]"
+                  >
+                    <span>
+                      <span className="block text-sm font-bold text-foreground">よりそいホットライン</span>
+                      <span className="block text-xs text-muted-foreground">0120-279-338 ・ 24時間・無料</span>
+                    </span>
+                    <Phone className="size-4 shrink-0 text-destructive" />
+                  </a>
+                  <a
+                    href="tel:0570783556"
+                    className="flex items-center justify-between rounded-2xl border border-destructive/25 bg-background px-4 py-3 transition-all hover:border-destructive/50 active:scale-[0.99]"
+                  >
+                    <span>
+                      <span className="block text-sm font-bold text-foreground">いのちの電話</span>
+                      <span className="block text-xs text-muted-foreground">0570-783-556</span>
+                    </span>
+                    <Phone className="size-4 shrink-0 text-destructive" />
+                  </a>
+                </div>
+              )}
+              {onGoToHospitalSearch && (
+                <button
+                  type="button"
+                  onClick={onGoToHospitalSearch}
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-destructive py-3.5 text-sm font-bold text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.99]"
+                >
+                  <MapPin className="size-4" />
+                  病院を探す
+                </button>
+              )}
             </div>
           )}
 

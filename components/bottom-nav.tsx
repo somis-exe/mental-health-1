@@ -1,12 +1,13 @@
 'use client'
 
-import { NotebookPen, BarChart3, UserCog, UserRound } from 'lucide-react'
+import { NotebookPen, BarChart3, Hospital, UserCog, UserRound } from 'lucide-react'
 import { type Screen, type AccountType } from '@/lib/health'
 import { cn } from '@/lib/utils'
 
 const SELF_ITEMS: { id: Screen; label: string; icon: typeof NotebookPen }[] = [
   { id: 'record', label: '体調記録', icon: NotebookPen },
   { id: 'report', label: 'レポート', icon: BarChart3 },
+  { id: 'hospital', label: '病院検索', icon: Hospital },
   { id: 'profile', label: '基本情報', icon: UserCog },
 ]
 
@@ -14,6 +15,7 @@ const GUARDIAN_ITEMS: { id: Screen; label: string; icon: typeof NotebookPen }[] 
   { id: 'record', label: 'みまもり記録', icon: NotebookPen },
   { id: 'patient', label: '本人の記録', icon: UserRound },
   { id: 'report', label: 'レポート', icon: BarChart3 },
+  { id: 'hospital', label: '病院検索', icon: Hospital },
   { id: 'profile', label: '基本情報', icon: UserCog },
 ]
 

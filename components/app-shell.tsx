@@ -11,6 +11,7 @@ import { ReportScreen } from '@/components/screens/report-screen'
 import { ProfileScreen, type ProfileScreenHandle } from '@/components/screens/profile-screen'
 import { PatientRecordsScreen } from '@/components/screens/patient-records-screen'
 import { CombinedReportScreen } from '@/components/screens/combined-report-screen'
+import { HospitalSearchScreen } from '@/components/screens/hospital-search-screen'
 import { type Screen, type Profile, type DailyRecord, dayKey, periodTrackingEnabled } from '@/lib/health'
 import { type LinkedPatient } from '@/lib/links'
 
@@ -18,6 +19,7 @@ const SELF_TITLES: Record<Screen, string> = {
   record: '体調記録',
   patient: '本人の記録',
   report: 'レポート',
+  hospital: '病院検索',
   profile: '基本情報',
 }
 
@@ -25,6 +27,7 @@ const GUARDIAN_TITLES: Record<Screen, string> = {
   record: 'みまもり記録',
   patient: '本人の記録',
   report: '総合レポート',
+  hospital: '病院検索',
   profile: '基本情報',
 }
 
@@ -149,10 +152,14 @@ export function AppShell({
               referenceRecord={referenceRecord}
               onSave={onSaveRecord}
               onBack={() => setRecordView('list')}
+              onGoToHospitalSearch={isGuardian ? undefined : () => goToTab('hospital')}
             />
           ))}
         {screen === 'patient' && isGuardian && (
           <PatientRecordsScreen patient={patient} records={patientRecords} />
+        )}
+        {screen === 'hospital' && (
+          <HospitalSearchScreen mode={isGuardian ? 'guardian' : 'self'} patientId={isGuardian ? undefined : userId} />
         )}
         {isGuardian
           ? screen === 'report' && (

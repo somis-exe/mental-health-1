@@ -1,4 +1,4 @@
-export type Screen = 'record' | 'patient' | 'report' | 'profile'
+export type Screen = 'record' | 'patient' | 'report' | 'hospital' | 'profile'
 
 export type AccountType = 'self' | 'guardian'
 
